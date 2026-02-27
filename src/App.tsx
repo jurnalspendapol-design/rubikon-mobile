@@ -73,6 +73,12 @@ const Header = ({ title, showBack = true, user, onProfileClick }: { title: strin
 };
 
 const ProfileModal = ({ user, isOpen, onClose, onLogout }: { user: User, isOpen: boolean, onClose: () => void, onLogout: () => void }) => {
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordStatus, setPasswordStatus] = useState<{type: 'error' | 'success', message: string} | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   if (!isOpen) return null;
 
   const toggleFullscreen = () => {
@@ -87,15 +93,49 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout }: { user: User, isOpen:
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordStatus(null);
+
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({ type: 'error', message: 'Password tidak cocok' });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordStatus({ type: 'error', message: 'Password minimal 6 karakter' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('users').update({ password: newPassword }).eq('id', user.id);
+      if (error) throw error;
+      
+      setPasswordStatus({ type: 'success', message: 'Password berhasil diubah' });
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setIsChangingPassword(false), 2000);
+    } catch (err) {
+      setPasswordStatus({ type: 'error', message: 'Gagal mengubah password' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative"
+        className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto"
       >
         <button 
-          onClick={onClose}
+          onClick={() => {
+            setIsChangingPassword(false);
+            setPasswordStatus(null);
+            onClose();
+          }}
           className="absolute top-6 right-6 p-2 bg-slate-50 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
         >
           <X className="w-6 h-6" />
@@ -112,40 +152,97 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout }: { user: User, isOpen:
           </div>
         </div>
 
-        <div className="space-y-4">
-          <button 
-            onClick={toggleFullscreen}
-            className="w-full flex items-center justify-center gap-3 bg-slate-50 text-slate-600 py-4 rounded-2xl font-bold text-sm transition-all active:scale-95"
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            Mode Fullscreen
-          </button>
+        {isChangingPassword ? (
+          <form onSubmit={handleChangePassword} className="space-y-4 mb-6">
+            <h3 className="text-sm font-bold text-slate-800 mb-2">Ganti Password</h3>
+            <div>
+              <input 
+                type="password" 
+                placeholder="Password Baru"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-blue-500 focus:outline-none"
+                required
+              />
+            </div>
+            <div>
+              <input 
+                type="password" 
+                placeholder="Konfirmasi Password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3 text-sm focus:border-blue-500 focus:outline-none"
+                required
+              />
+            </div>
+            
+            {passwordStatus && (
+              <p className={`text-xs font-bold p-2 rounded-lg ${passwordStatus.type === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                {passwordStatus.message}
+              </p>
+            )}
 
-          <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Informasi Akun</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-500 font-medium">ID Pengguna</span>
-                <span className="text-sm text-slate-800 font-bold">#{user.id}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-500 font-medium">Status Akun</span>
-                <span className="text-sm text-emerald-500 font-bold">Aktif</span>
+            <div className="flex gap-2">
+              <button 
+                type="button"
+                onClick={() => setIsChangingPassword(false)}
+                className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-sm"
+              >
+                Batal
+              </button>
+              <button 
+                type="submit"
+                disabled={isSaving}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-50"
+              >
+                {isSaving ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <button 
+              onClick={toggleFullscreen}
+              className="w-full flex items-center justify-center gap-3 bg-slate-50 text-slate-600 py-4 rounded-2xl font-bold text-sm transition-all active:scale-95"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Mode Fullscreen
+            </button>
+
+            <button 
+              onClick={() => setIsChangingPassword(true)}
+              className="w-full flex items-center justify-center gap-3 bg-blue-50 text-blue-600 py-4 rounded-2xl font-bold text-sm transition-all active:scale-95"
+            >
+              <Edit2 className="w-4 h-4" />
+              Ganti Password
+            </button>
+
+            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Informasi Akun</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-500 font-medium">ID Pengguna</span>
+                  <span className="text-sm text-slate-800 font-bold">#{user.id}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-500 font-medium">Status Akun</span>
+                  <span className="text-sm text-emerald-500 font-bold">Aktif</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <button 
-            onClick={() => {
-              onClose();
-              onLogout();
-            }}
-            className="w-full flex items-center justify-center gap-3 bg-rose-50 text-rose-600 py-5 rounded-2xl font-bold text-display transition-all active:scale-95"
-          >
-            <LogOut className="w-5 h-5" />
-            Keluar dari Aplikasi
-          </button>
-        </div>
+            <button 
+              onClick={() => {
+                onClose();
+                onLogout();
+              }}
+              className="w-full flex items-center justify-center gap-3 bg-rose-50 text-rose-600 py-5 rounded-2xl font-bold text-display transition-all active:scale-95"
+            >
+              <LogOut className="w-5 h-5" />
+              Keluar dari Aplikasi
+            </button>
+          </div>
+        )}
       </motion.div>
     </div>
   );
@@ -1209,14 +1306,14 @@ const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => vo
       const lines = text.split('\n');
       const usersToImport = [];
 
-      // Skip header: nama, email, kelas
+      // Skip header: nama, email, kelas, password
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
         
-        const [name, email, userClass] = line.split(',').map(s => s.trim());
+        const [name, email, userClass, password] = line.split(',').map(s => s.trim());
         if (name && email) {
-          usersToImport.push({ name, email, class: userClass });
+          usersToImport.push({ name, email, class: userClass, password: password || '123456' });
         }
       }
 
@@ -1328,6 +1425,13 @@ const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => vo
                   className="w-full bg-white border-2 border-slate-100 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium focus:border-blue-500 outline-none transition-all"
                 />
               </div>
+              <button 
+                onClick={downloadCsvTemplate}
+                className="bg-indigo-600 text-white p-4 rounded-2xl shadow-lg shadow-indigo-100"
+                title="Download Template CSV"
+              >
+                <BookOpen className="w-6 h-6" />
+              </button>
               <input 
                 type="file" 
                 id="csv-upload" 
@@ -1338,12 +1442,14 @@ const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => vo
               <label 
                 htmlFor="csv-upload"
                 className="bg-emerald-600 text-white p-4 rounded-2xl shadow-lg shadow-emerald-100 cursor-pointer"
+                title="Upload CSV"
               >
                 <Upload className="w-6 h-6" />
               </label>
               <button 
                 onClick={() => { setEditingUser(null); setIsUserModalOpen(true); }}
                 className="bg-blue-600 text-white p-4 rounded-2xl shadow-lg shadow-blue-100"
+                title="Tambah Pengguna"
               >
                 <Plus className="w-6 h-6" />
               </button>
@@ -1490,7 +1596,7 @@ const HistoryView = ({ user }: { user: User }) => {
   }, [user.id]);
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] pb-32 w-full">
+    <div className="min-h-screen bg-slate-50 pb-32 w-full">
       <Header title="Riwayat Konseling" />
       <div className="p-8 space-y-5 max-w-2xl mx-auto">
         {requests.length === 0 ? (
@@ -1528,7 +1634,7 @@ const HistoryView = ({ user }: { user: User }) => {
 };
 
 const SelfHealing = () => (
-  <div className="min-h-screen bg-[#F0F2F5] pb-32 w-full">
+  <div className="min-h-screen bg-slate-50 pb-32 w-full">
     <Header title="Self Healing" />
     <div className="p-8 space-y-8 max-w-2xl mx-auto">
       <motion.div 
@@ -1606,6 +1712,7 @@ const ExternalFrame = ({ url, title }: { url: string, title: string }) => (
 
 const LoginPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -1618,6 +1725,19 @@ const LoginPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
       const { data, error } = await supabase.from('users').select('*').eq('email', email).single();
       
       if (data) {
+        if (data.password) {
+          if (data.password !== password) {
+            setError('Password salah');
+            setLoading(false);
+            return;
+          }
+        } else {
+          if (password !== '123456') {
+            setError('Password salah (Gunakan 123456 untuk akun lama)');
+            setLoading(false);
+            return;
+          }
+        }
         onLogin(data as User);
       } else {
         setError('Email tidak terdaftar');
@@ -1630,23 +1750,23 @@ const LoginPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center justify-center p-6 w-full">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="text-center mb-12">
-          <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-400 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-blue-200 animate-float">
+        <div className="text-center mb-10">
+          <div className="w-24 h-24 bg-gradient-to-tr from-blue-500 to-teal-400 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-200 animate-float">
             <School className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-display text-4xl font-extrabold text-slate-900 mb-2">RUBIKON MOBILE</h1>
-          <p className="text-slate-500 font-medium">Ruang Bimbingan Konseling Mobile</p>
+          <h1 className="text-display text-4xl font-extrabold text-slate-800 mb-2 tracking-tight">RUBIKON</h1>
+          <p className="text-slate-500 font-medium text-sm">Ruang Bimbingan Konseling Mobile</p>
         </div>
 
-        <div className="card-neo p-8">
-          <h2 className="text-display text-2xl font-bold text-slate-800 mb-6">Selamat Datang!</h2>
-          <form onSubmit={handleLogin} className="space-y-6">
+        <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+          <h2 className="text-display text-2xl font-bold text-slate-800 mb-6">Masuk</h2>
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 ml-1">Email Address</label>
               <input 
@@ -1654,6 +1774,17 @@ const LoginPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nama@sekolah.id"
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-slate-800 font-medium focus:border-blue-500 focus:outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 ml-1">Password</label>
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Masukkan password"
                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-slate-800 font-medium focus:border-blue-500 focus:outline-none transition-all"
                 required
               />
@@ -1666,7 +1797,7 @@ const LoginPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
             <button 
               type="submit"
               disabled={loading}
-              className="w-full bg-slate-900 text-white py-5 rounded-2xl font-bold text-display shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-blue-600 to-teal-500 text-white py-5 rounded-2xl font-bold text-display shadow-xl shadow-blue-200 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? 'Masuk...' : 'Masuk Sekarang'}
             </button>
@@ -1684,6 +1815,14 @@ const LoginPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
 };
 
 // --- Main App ---
+
+const MobileWrapper = ({ children }: { children: React.ReactNode }) => (
+  <div className="min-h-screen bg-slate-100 flex justify-center w-full font-sans">
+    <div className="w-full max-w-md bg-white min-h-screen shadow-2xl relative overflow-x-hidden sm:border-x border-slate-200">
+      {children}
+    </div>
+  </div>
+);
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -1721,65 +1860,71 @@ export default function App() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-slate-400">Loading...</div>;
 
-  if (!user) return <LoginPage onLogin={handleLogin} />;
+  if (!user) return (
+    <MobileWrapper>
+      <LoginPage onLogin={handleLogin} />
+    </MobileWrapper>
+  );
 
   return (
-    <Router>
-      <div className="w-full bg-[#F0F2F5] min-h-screen relative overflow-x-hidden">
-        <ChatModal isOpen={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} />
-        <AnimatePresence mode="wait">
-          <Routes>
-            <Route path="/" element={<Home user={user} onLogout={handleLogout} />} />
-            <Route path="/counseling" element={<CounselingForm user={user} />} />
-            <Route path="/report" element={<ReportingForm user={user} />} />
-            <Route path="/modules" element={<ModuleList />} />
-            <Route path="/history" element={<HistoryView user={user} />} />
-            <Route path="/admin" element={<CounselorDashboard user={user} onLogout={handleLogout} />} />
-            <Route path="/healing" element={<SelfHealing />} />
-            <Route path="/info" element={<ExternalFrame title="Info Sekolah Lanjutan" url="https://sekolah.data.kemendikdasmen.go.id/" />} />
-            <Route path="/test" element={<ExternalFrame title="Tes Gaya Belajar" url="https://akupintar.id/mp/tes-gaya-belajar" />} />
-          </Routes>
-        </AnimatePresence>
-        
-        {/* Navigation Bar for Student */}
-        {user.role === 'student' && (
-          <div className="nav-floating max-w-md mx-auto left-0 right-0">
-            <Link to="/" className="flex flex-col items-center gap-1 text-blue-600">
-              <div className="p-2 bg-blue-50 rounded-xl">
-                <LayoutDashboard className="w-5 h-5" />
+    <MobileWrapper>
+      <Router>
+        <div className="w-full bg-slate-50 min-h-screen relative overflow-x-hidden pb-24">
+          <ChatModal isOpen={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} />
+          <AnimatePresence mode="wait">
+            <Routes>
+              <Route path="/" element={<Home user={user} onLogout={handleLogout} />} />
+              <Route path="/counseling" element={<CounselingForm user={user} />} />
+              <Route path="/report" element={<ReportingForm user={user} />} />
+              <Route path="/modules" element={<ModuleList />} />
+              <Route path="/history" element={<HistoryView user={user} />} />
+              <Route path="/admin" element={<CounselorDashboard user={user} onLogout={handleLogout} />} />
+              <Route path="/healing" element={<SelfHealing />} />
+              <Route path="/info" element={<ExternalFrame title="Info Sekolah Lanjutan" url="https://sekolah.data.kemendikdasmen.go.id/" />} />
+              <Route path="/test" element={<ExternalFrame title="Tes Gaya Belajar" url="https://akupintar.id/mp/tes-gaya-belajar" />} />
+            </Routes>
+          </AnimatePresence>
+          
+          {/* Navigation Bar for Student */}
+          {user.role === 'student' && (
+            <div className="fixed bottom-0 w-full max-w-md bg-white/80 backdrop-blur-xl border-t border-slate-100 px-6 py-4 flex justify-between items-center z-50 rounded-t-3xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
+              <Link to="/" className="flex flex-col items-center gap-1 text-blue-600">
+                <div className="p-2 bg-blue-50 rounded-xl">
+                  <LayoutDashboard className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
+              </Link>
+              
+              <Link to="/history" className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
+                <History className="w-5 h-5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
+              </Link>
+              
+              {/* Center Action Button */}
+              <div className="relative -top-8">
+                <motion.button 
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setIsChatModalOpen(true)}
+                  className="bg-gradient-to-tr from-blue-600 to-teal-400 p-5 rounded-[1.5rem] shadow-2xl shadow-blue-200 text-white border-4 border-white"
+                >
+                  <MessageSquare className="w-6 h-6" />
+                </motion.button>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
-            </Link>
-            
-            <Link to="/history" className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
-              <History className="w-5 h-5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
-            </Link>
-            
-            {/* Center Action Button */}
-            <div className="relative -top-8">
-              <motion.button 
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setIsChatModalOpen(true)}
-                className="bg-gradient-to-tr from-blue-600 to-indigo-500 p-5 rounded-[1.5rem] shadow-2xl shadow-blue-200 text-white border-4 border-white"
-              >
-                <MessageSquare className="w-6 h-6" />
-              </motion.button>
-            </div>
 
-            <Link to="/modules" className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
-              <BookOpen className="w-5 h-5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Learn</span>
-            </Link>
-            
-            <button className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
-              <User className="w-5 h-5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Me</span>
-            </button>
-          </div>
-        )}
-      </div>
-    </Router>
+              <Link to="/modules" className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
+                <BookOpen className="w-5 h-5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Learn</span>
+              </Link>
+              
+              <button className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
+                <User className="w-5 h-5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Me</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </Router>
+    </MobileWrapper>
   );
 }
