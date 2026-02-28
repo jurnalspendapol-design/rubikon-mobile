@@ -386,7 +386,7 @@ const Home = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] pb-32 w-full">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-indigo-50 to-purple-50 pb-32 w-full">
       <ProfileModal 
         user={user} 
         isOpen={isProfileOpen} 
@@ -673,7 +673,7 @@ const CounselingForm = ({ user }: { user: User }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 w-full">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-yellow-50 pb-20 w-full">
       <Header title="Layanan Konseling" />
       
       {/* Type Selector */}
@@ -1301,7 +1301,7 @@ const ReportingForm = ({ user }: { user: User }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 w-full pb-32">
+    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-fuchsia-50 to-pink-50 w-full pb-32">
       <Header title="Layanan Pengaduan" />
       
       <div className="p-6 max-w-2xl mx-auto">
@@ -1624,30 +1624,31 @@ const ReportingForm = ({ user }: { user: User }) => {
 
 const ModuleList = () => {
   const [modules, setModules] = useState<Module[]>([]);
+  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
 
   const defaultModules: Module[] = [
     {
       id: 1,
       title: "Mengatasi Kecemasan Menghadapi Ujian",
-      content: "Kecemasan saat ujian adalah hal yang wajar. Beberapa cara untuk mengatasinya antara lain: persiapan yang matang, mengatur pola tidur, melakukan relaksasi pernapasan sebelum ujian, dan berpikir positif. Jangan lupa untuk selalu berdoa dan meminta restu orang tua.",
+      content: "Kecemasan saat ujian adalah hal yang wajar. Beberapa cara untuk mengatasinya antara lain:\n\n1. Persiapan yang matang: Belajarlah jauh-jauh hari, jangan SKS (Sistem Ngebut Semalam).\n2. Mengatur pola tidur: Pastikan kamu tidur cukup (7-8 jam) sebelum hari ujian.\n3. Melakukan relaksasi pernapasan: Tarik napas dalam-dalam selama 4 detik, tahan 4 detik, lalu hembuskan perlahan selama 6 detik. Ulangi beberapa kali sebelum ujian dimulai.\n4. Berpikir positif: Yakinkan dirimu bahwa kamu sudah berusaha maksimal.\n5. Jangan lupa untuk selalu berdoa dan meminta restu orang tua.",
       category: "Akademik"
     },
     {
       id: 2,
       title: "Membangun Kepercayaan Diri",
-      content: "Kepercayaan diri bukan bawaan lahir, melainkan keterampilan yang bisa dilatih. Mulailah dengan mengenali kelebihanmu, berhenti membandingkan diri dengan orang lain, berani mencoba hal baru, dan selalu bersyukur atas apa yang kamu miliki.",
+      content: "Kepercayaan diri bukan bawaan lahir, melainkan keterampilan yang bisa dilatih. Mulailah dengan:\n\n1. Mengenali kelebihanmu: Catat hal-hal positif tentang dirimu.\n2. Berhenti membandingkan diri dengan orang lain: Setiap orang punya jalan dan waktunya masing-masing.\n3. Berani mencoba hal baru: Keluar dari zona nyaman akan memperluas wawasanmu.\n4. Selalu bersyukur: Fokus pada apa yang kamu miliki, bukan apa yang tidak kamu miliki.\n5. Menerima kegagalan: Jadikan kegagalan sebagai pelajaran, bukan akhir dari segalanya.",
       category: "Pribadi"
     },
     {
       id: 3,
       title: "Cara Menghadapi Bullying",
-      content: "Jika kamu mengalami bullying, jangan diam saja. Ceritakan kepada orang dewasa yang kamu percayai (orang tua atau guru BK). Jangan membalas dengan kekerasan, tetap tenang, dan hindari situasi yang berpotensi membahayakan dirimu. Ingat, kamu tidak sendirian.",
+      content: "Jika kamu mengalami bullying, jangan diam saja. Berikut langkah yang bisa kamu ambil:\n\n1. Ceritakan kepada orang dewasa yang kamu percayai: Orang tua, wali kelas, atau guru BK.\n2. Jangan membalas dengan kekerasan: Membalas dendam hanya akan memperburuk situasi.\n3. Tetap tenang dan abaikan: Terkadang pelaku bullying hanya mencari reaksi darimu.\n4. Hindari situasi yang berpotensi membahayakan dirimu: Jangan berjalan sendirian di tempat sepi.\n5. Simpan bukti: Jika bullying terjadi secara online (cyberbullying), screenshot buktinya.\n\nIngat, kamu tidak sendirian dan kamu berhak merasa aman.",
       category: "Sosial"
     },
     {
       id: 4,
       title: "Manajemen Waktu Belajar",
-      content: "Banyak siswa kesulitan membagi waktu antara belajar, bermain, dan istirahat. Cobalah membuat jadwal harian, gunakan teknik Pomodoro (25 menit belajar, 5 menit istirahat), hindari menunda-nunda pekerjaan, dan kurangi gangguan seperti notifikasi HP saat belajar.",
+      content: "Banyak siswa kesulitan membagi waktu antara belajar, bermain, dan istirahat. Cobalah tips berikut:\n\n1. Membuat jadwal harian: Tuliskan apa saja yang harus kamu kerjakan hari ini.\n2. Gunakan teknik Pomodoro: Belajar fokus selama 25 menit, lalu istirahat 5 menit. Setelah 4 sesi, istirahat lebih lama (15-30 menit).\n3. Hindari menunda-nunda pekerjaan: Kerjakan tugas sesegera mungkin.\n4. Kurangi gangguan: Matikan notifikasi HP atau letakkan HP di ruangan lain saat belajar.\n5. Tentukan prioritas: Kerjakan tugas yang paling penting atau paling sulit terlebih dahulu.",
       category: "Akademik"
     }
   ];
@@ -1664,19 +1665,62 @@ const ModuleList = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 w-full pb-32">
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-pink-50 to-purple-50 w-full pb-32">
       <Header title="Modul BK" />
+      
+      {/* Module Detail Modal */}
+      <AnimatePresence>
+        {selectedModule && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative max-h-[90vh] flex flex-col overflow-hidden"
+            >
+              <div className="bg-rose-100 p-6 pb-8 relative shrink-0">
+                <button 
+                  onClick={() => setSelectedModule(null)}
+                  className="absolute top-4 right-4 p-2 bg-white/50 backdrop-blur-md rounded-full text-rose-600 hover:bg-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="inline-block px-3 py-1 bg-rose-200 text-rose-700 rounded-full text-[10px] font-bold uppercase tracking-wider mb-3">
+                  {selectedModule.category.replace('_', ' ')}
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 leading-tight">{selectedModule.title}</h2>
+              </div>
+              
+              <div className="p-6 overflow-y-auto bg-white -mt-4 rounded-t-3xl relative z-10">
+                <div className="prose prose-sm text-slate-600 whitespace-pre-line leading-relaxed">
+                  {selectedModule.content}
+                </div>
+                <button 
+                  onClick={() => setSelectedModule(null)}
+                  className="w-full mt-8 bg-rose-50 text-rose-600 py-4 rounded-2xl font-bold hover:bg-rose-100 transition-colors"
+                >
+                  Tutup Modul
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="p-6 space-y-4 max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {modules.map(m => (
-          <div key={m.id} className="bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm h-full flex flex-col">
+          <div key={m.id} className="bg-white p-6 rounded-3xl border border-rose-100 shadow-sm shadow-rose-100/50 h-full flex flex-col">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-600 px-3 py-1 rounded-full">
                 {m.category.replace('_', ' ')}
               </span>
             </div>
             <h3 className="text-lg font-bold text-slate-800 mb-3 leading-tight">{m.title}</h3>
-            <p className="text-sm text-slate-600 line-clamp-4 leading-relaxed flex-1">{m.content}</p>
-            <button className="mt-6 text-rose-600 font-bold flex items-center gap-1 text-sm hover:text-rose-700 transition-colors">
+            <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed flex-1">{m.content}</p>
+            <button 
+              onClick={() => setSelectedModule(m)}
+              className="mt-6 text-rose-600 font-bold flex items-center gap-1 text-sm hover:text-rose-700 transition-colors"
+            >
               Baca Selengkapnya <ChevronLeft className="w-4 h-4 rotate-180" />
             </button>
           </div>
@@ -2069,7 +2113,7 @@ const HistoryView = ({ user }: { user: User }) => {
   }, [user.id]);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32 w-full">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-gray-50 to-zinc-50 pb-32 w-full">
       <Header title="Riwayat Konseling" />
       <div className="p-8 space-y-5 max-w-2xl mx-auto">
         {requests.length === 0 ? (
@@ -2125,7 +2169,7 @@ const SelfHealing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32 w-full">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-purple-50 to-pink-50 pb-32 w-full">
       <Header title="Self Healing" />
       <div className="p-6 space-y-8 max-w-2xl mx-auto">
         <motion.div 
@@ -2314,7 +2358,7 @@ const LearningStyleTest = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 w-full pb-32">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-teal-50 to-cyan-50 w-full pb-32">
       <Header title="Tes Gaya Belajar" />
       <div className="p-6 max-w-2xl mx-auto">
         {!result ? (
@@ -2513,7 +2557,7 @@ const LoginPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
 // --- Main App ---
 
 const MobileWrapper = ({ children }: { children: React.ReactNode }) => (
-  <div className="min-h-screen bg-slate-100 flex justify-center w-full font-sans">
+  <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex justify-center w-full font-sans">
     <div className="w-full max-w-md bg-white min-h-screen shadow-2xl relative overflow-x-hidden sm:border-x border-slate-200">
       {children}
     </div>
