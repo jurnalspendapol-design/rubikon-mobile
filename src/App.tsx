@@ -45,6 +45,23 @@ interface Module {
 
 // --- Components ---
 
+const AppLogo = ({ className, fallbackIcon: FallbackIcon }: { className?: string, fallbackIcon: any }) => {
+  const [imgError, setImgError] = useState(false);
+  
+  if (imgError) {
+    return <FallbackIcon className={className} />;
+  }
+  
+  return (
+    <img 
+      src="/logo.png" 
+      alt="Logo" 
+      className={cn("object-contain", className)} 
+      onError={() => setImgError(true)} 
+    />
+  );
+};
+
 const Header = ({ title, showBack = true, user, onProfileClick }: { title: string, showBack?: boolean, user?: User, onProfileClick?: () => void }) => {
   const navigate = useNavigate();
   return (
@@ -473,7 +490,7 @@ const Home = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
           </div>
           
           <div className="absolute right-6 bottom-6 animate-float opacity-40">
-            <School className="w-20 h-20 text-white" />
+            <AppLogo className="w-20 h-20 text-white" fallbackIcon={School} />
           </div>
         </motion.div>
       </div>
@@ -2497,8 +2514,8 @@ const LoginPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
         className="w-full max-w-md"
       >
         <div className="text-center mb-10">
-          <div className="w-24 h-24 bg-gradient-to-tr from-blue-500 to-teal-400 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-200 animate-float">
-            <School className="w-12 h-12 text-white" />
+          <div className="w-24 h-24 bg-gradient-to-tr from-blue-500 to-teal-400 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-200 animate-float overflow-hidden">
+            <AppLogo className="w-12 h-12 text-white" fallbackIcon={School} />
           </div>
           <h1 className="text-display text-4xl font-extrabold text-slate-800 mb-2 tracking-tight">RUBIKON</h1>
           <p className="text-slate-500 font-medium text-sm">Ruang Bimbingan Konseling Mobile</p>
