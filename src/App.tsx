@@ -1334,8 +1334,21 @@ const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => vo
     reader.readAsText(file);
   };
 
+  const downloadCsvTemplate = () => {
+    const csvContent = "nama,email,kelas,password\nBudi Santoso,budi@siswa.com,X-A,123456\nSiti Aminah,siti@siswa.com,X-B,123456";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "template_siswa.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="min-h-screen bg-[#F0F2F5] pb-32 w-full">
+    <div className="min-h-screen bg-slate-50 pb-32 w-full">
       <ProfileModal 
         user={user} 
         isOpen={isProfileOpen} 
