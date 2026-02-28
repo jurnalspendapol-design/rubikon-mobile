@@ -33,6 +33,7 @@ interface User {
   name: string;
   role: 'student' | 'counselor';
   email: string;
+  class?: string;
 }
 
 interface Module {
@@ -342,9 +343,10 @@ const ServiceCard = ({
   </motion.button>
 );
 
-const Banner = ({ image, title, category }: { image: string, title: string, category: string }) => (
+const Banner = ({ image, title, category, onClick }: { image: string, title: string, category: string, onClick?: () => void, key?: number | string }) => (
   <motion.div 
     whileHover={{ scale: 1.02 }}
+    onClick={onClick}
     className="min-w-[300px] h-44 rounded-[2.5rem] overflow-hidden relative mr-5 shadow-lg group cursor-pointer"
   >
     <img src={image} alt={title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
@@ -360,6 +362,28 @@ const Banner = ({ image, title, category }: { image: string, title: string, cate
 const Home = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [selectedBanner, setSelectedBanner] = useState<{title: string, category: string, content: string, image: string} | null>(null);
+
+  const banners = [
+    {
+      image: "https://picsum.photos/seed/mental/800/600",
+      category: "Tips",
+      title: "Cara Meningkatkan Konsentrasi Belajar",
+      content: "1. Cari tempat yang tenang dan bebas gangguan.\n2. Gunakan teknik Pomodoro (25 menit belajar, 5 menit istirahat).\n3. Jauhkan handphone saat sedang fokus.\n4. Minum air putih yang cukup agar otak tetap segar.\n5. Buat target belajar yang jelas setiap harinya."
+    },
+    {
+      image: "https://picsum.photos/seed/study/800/600",
+      category: "Motivasi",
+      title: "Mengatasi Rasa Malas",
+      content: "1. Ingat kembali tujuan awalmu bersekolah.\n2. Pecah tugas besar menjadi bagian-bagian kecil yang mudah dikerjakan.\n3. Beri dirimu hadiah kecil (reward) setelah menyelesaikan tugas.\n4. Cari teman belajar yang bisa saling memotivasi.\n5. Jangan terlalu keras pada dirimu sendiri, istirahatlah jika lelah."
+    },
+    {
+      image: "https://picsum.photos/seed/career/800/600",
+      category: "Sosial",
+      title: "Tips Berteman di Lingkungan Baru",
+      content: "1. Jadilah pendengar yang baik.\n2. Jangan ragu untuk menyapa lebih dulu.\n3. Ikuti kegiatan ekstrakurikuler yang kamu minati.\n4. Tetap menjadi dirimu sendiri (be authentic).\n5. Hargai perbedaan pendapat dan latar belakang."
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] pb-32 w-full">
@@ -369,6 +393,47 @@ const Home = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
         onClose={() => setIsProfileOpen(false)} 
         onLogout={onLogout} 
       />
+
+      {/* Banner Detail Modal */}
+      <AnimatePresence>
+        {selectedBanner && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl relative max-h-[90vh] flex flex-col"
+            >
+              <div className="h-48 relative shrink-0">
+                <img src={selectedBanner.image} alt={selectedBanner.title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                <button 
+                  onClick={() => setSelectedBanner(null)}
+                  className="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="absolute bottom-4 left-6 right-6">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/70 mb-1 block">{selectedBanner.category}</span>
+                  <h2 className="text-white font-bold text-xl leading-tight text-display">{selectedBanner.title}</h2>
+                </div>
+              </div>
+              <div className="p-6 overflow-y-auto">
+                <div className="prose prose-sm text-slate-600 whitespace-pre-line">
+                  {selectedBanner.content}
+                </div>
+                <button 
+                  onClick={() => setSelectedBanner(null)}
+                  className="w-full mt-8 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors"
+                >
+                  Tutup
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-5xl mx-auto">
         {/* Top Header */}
         <div className="px-8 pt-10 pb-6 flex justify-between items-center">
@@ -481,21 +546,15 @@ const Home = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
           <button className="text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-full">Lihat semua</button>
         </div>
         <div className="flex overflow-x-auto px-8 no-scrollbar">
-          <Banner 
-            image="https://picsum.photos/seed/mental/800/600" 
-            category="Workshop"
-            title="Kesehatan Mental Remaja" 
-          />
-          <Banner 
-            image="https://picsum.photos/seed/study/800/600" 
-            category="Tips"
-            title="Sukses Ujian Akhir Semester" 
-          />
-          <Banner 
-            image="https://picsum.photos/seed/career/800/600" 
-            category="Event"
-            title="Pameran Pendidikan 2026" 
-          />
+          {banners.map((banner, idx) => (
+            <Banner 
+              key={idx}
+              image={banner.image} 
+              category={banner.category}
+              title={banner.title} 
+              onClick={() => setSelectedBanner(banner)}
+            />
+          ))}
         </div>
       </div>
 
@@ -1120,18 +1179,101 @@ const CounselingForm = ({ user }: { user: User }) => {
 };
 
 const ReportingForm = ({ user }: { user: User }) => {
-  const [content, setContent] = useState('');
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form State
+  const [formData, setFormData] = useState({
+    // Bagian 1
+    namaPelapor: user.name,
+    kelas: user.class || '',
+    isAnonymous: false,
+    
+    // Bagian 2
+    jenisPengaduan: [] as string[],
+    jenisPengaduanLainnya: '',
+    pihakTerlibat: '',
+    waktuTempat: '',
+    kronologi: '',
+    saksi: '',
+    
+    // Bagian 3 (Khusus Kelompok)
+    namaKelompok: '',
+    penyebab: '',
+    lamaMasalah: '',
+    upayaDamai: '',
+    
+    // Bagian 4
+    harapan: [] as string[],
+    kontak: ''
+  });
+
+  const isKelompok = formData.jenisPengaduan.includes('Masalah Kelompok: Konflik antar geng atau perpecahan di kelas.');
+
+  const handleNext = () => {
+    if (step === 2 && !isKelompok) {
+      setStep(4); // Skip section 3 if not group issue
+    } else {
+      setStep(step + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (step === 4 && !isKelompok) {
+      setStep(2);
+    } else {
+      setStep(step - 1);
+    }
+  };
+
+  const toggleArrayItem = (field: 'jenisPengaduan' | 'harapan', value: string) => {
+    setFormData(prev => {
+      const array = prev[field];
+      if (array.includes(value)) {
+        return { ...prev, [field]: array.filter(item => item !== value) };
+      } else {
+        return { ...prev, [field]: [...array, value] };
+      }
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
+    // Format content for database
+    let content = `*LAPORAN PENGADUAN*\n\n`;
+    content += `*BAGIAN 1: IDENTITAS*\n`;
+    content += `Nama: ${formData.isAnonymous ? 'Anonim' : formData.namaPelapor}\n`;
+    content += `Kelas: ${formData.kelas}\n\n`;
+    
+    content += `*BAGIAN 2: DETAIL KEJADIAN*\n`;
+    content += `Jenis Pengaduan: ${formData.jenisPengaduan.join(', ')}${formData.jenisPengaduan.includes('Lainnya') ? ` (${formData.jenisPengaduanLainnya})` : ''}\n`;
+    content += `Pihak Terlibat: ${formData.pihakTerlibat}\n`;
+    content += `Waktu & Tempat: ${formData.waktuTempat}\n`;
+    content += `Kronologi:\n${formData.kronologi}\n`;
+    content += `Saksi: ${formData.saksi}\n\n`;
+
+    if (isKelompok) {
+      content += `*BAGIAN 3: MASALAH KELOMPOK*\n`;
+      content += `Kelompok Berkonflik: ${formData.namaKelompok}\n`;
+      content += `Penyebab: ${formData.penyebab}\n`;
+      content += `Lama Berlangsung: ${formData.lamaMasalah}\n`;
+      content += `Upaya Damai: ${formData.upayaDamai}\n\n`;
+    }
+
+    content += `*BAGIAN 4: HARAPAN & TINDAK LANJUT*\n`;
+    content += `Harapan: ${formData.harapan.join(', ')}\n`;
+    content += `Kontak: ${formData.kontak}\n`;
+
     const { error } = await supabase.from('reports').insert({
       student_id: user.id,
       content,
-      is_anonymous: isAnonymous ? 1 : 0
+      is_anonymous: formData.isAnonymous ? 1 : 0
     });
     
+    setIsSubmitting(false);
     if (!error) {
       setSubmitted(true);
     } else {
@@ -1142,51 +1284,338 @@ const ReportingForm = ({ user }: { user: User }) => {
   if (submitted) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="bg-purple-100 p-4 rounded-full mb-4">
-          <AlertCircle className="w-12 h-12 text-purple-600" />
+        <div className="bg-purple-100 p-6 rounded-full mb-6">
+          <AlertCircle className="w-16 h-16 text-purple-600" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">Laporan Diterima</h2>
-        <p className="text-slate-600 mb-6">Terima kasih telah berani melapor. Kami akan menindaklanjuti laporan ini dengan sangat rahasia.</p>
-        <Link to="/" className="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold">Kembali ke Menu</Link>
+        <h2 className="text-display text-2xl font-bold text-slate-800 mb-4">Laporan Diterima</h2>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 max-w-md">
+          <p className="text-slate-600 font-medium leading-relaxed">
+            "Terima kasih sudah berani melapor. Kamu tidak sendirian. Laporanmu akan segera kami pelajari. Tetap tenang dan jika kamu merasa dalam bahaya mendesak, segera temui Guru BK secara langsung."
+          </p>
+        </div>
+        <Link to="/" className="bg-purple-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-purple-200 active:scale-95 transition-all">
+          Kembali ke Beranda
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 w-full">
+    <div className="min-h-screen bg-slate-50 w-full pb-32">
       <Header title="Layanan Pengaduan" />
+      
       <div className="p-6 max-w-2xl mx-auto">
-        <div className="bg-purple-50 p-4 rounded-2xl mb-6 border border-purple-100">
-          <p className="text-sm text-purple-800 italic">
-            "Jangan takut untuk melapor. Kamu bisa memilih untuk tetap anonim (tanpa nama) agar identitasmu tetap terjaga."
-          </p>
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <div className="flex justify-between mb-2">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
+                step === i ? "bg-purple-600 text-white" : 
+                step > i ? "bg-purple-200 text-purple-700" : "bg-slate-200 text-slate-400",
+                (!isKelompok && i === 3) && "opacity-30"
+              )}>
+                {i}
+              </div>
+            ))}
+          </div>
+          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-purple-600 transition-all duration-300"
+              style={{ width: `${((step - 1) / 3) * 100}%` }}
+            />
+          </div>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Isi Laporan</label>
-            <textarea 
-              className="w-full p-4 rounded-xl border-2 border-slate-200 bg-white focus:border-purple-500 outline-none min-h-[200px]"
-              placeholder="Jelaskan kejadian yang kamu alami atau lihat (bullying, kekerasan, dll)..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              required
-            />
-          </div>
 
-          <div className="flex items-center gap-3 bg-white p-4 rounded-xl border-2 border-slate-200">
-            <input 
-              type="checkbox" 
-              id="anonymous"
-              className="w-5 h-5 accent-purple-600"
-              checked={isAnonymous}
-              onChange={(e) => setIsAnonymous(e.target.checked)}
-            />
-            <label htmlFor="anonymous" className="font-bold text-slate-700">Kirim sebagai Anonim (Tanpa Nama)</label>
-          </div>
+        <form onSubmit={step === 4 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }} className="space-y-6">
+          
+          {/* STEP 1: Identitas */}
+          {step === 1 && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-5">
+                <h3 className="text-xl font-bold text-slate-800 border-b pb-4">Bagian 1: Identitas & Keamanan</h3>
+                
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Nama Pelapor</label>
+                  <p className="text-xs text-slate-500 mb-2">Boleh dikosongkan jika ingin anonim</p>
+                  <input 
+                    type="text" 
+                    value={formData.namaPelapor}
+                    onChange={e => setFormData({...formData, namaPelapor: e.target.value})}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none transition-all"
+                    placeholder="Nama kamu..."
+                  />
+                </div>
 
-          <button type="submit" className="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-purple-700 transition-colors">
-            Kirim Laporan
-          </button>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Kelas</label>
+                  <input 
+                    type="text" 
+                    value={formData.kelas}
+                    onChange={e => setFormData({...formData, kelas: e.target.value})}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none transition-all"
+                    placeholder="Contoh: 7A, 8B"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3">Apakah kamu ingin identitasmu dirahasiakan?</label>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                      <input 
+                        type="radio" 
+                        name="anonim" 
+                        checked={formData.isAnonymous === true}
+                        onChange={() => setFormData({...formData, isAnonymous: true})}
+                        className="w-5 h-5 accent-purple-600"
+                      />
+                      <span className="font-medium text-slate-700">Ya, mohon rahasiakan identitas saya.</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                      <input 
+                        type="radio" 
+                        name="anonim" 
+                        checked={formData.isAnonymous === false}
+                        onChange={() => setFormData({...formData, isAnonymous: false})}
+                        className="w-5 h-5 accent-purple-600"
+                      />
+                      <span className="font-medium text-slate-700">Tidak apa-apa jika guru tahu siapa saya.</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 2: Detail Pengaduan */}
+          {step === 2 && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-5">
+                <h3 className="text-xl font-bold text-slate-800 border-b pb-4">Bagian 2: Detail Pengaduan</h3>
+                
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3">Jenis Pengaduan (Bisa pilih lebih dari satu)</label>
+                  <div className="space-y-2">
+                    {[
+                      'Perundungan (Bullying): Fisik, kata-kata kasar, atau di media sosial.',
+                      'Fasilitas Sekolah: Kamar mandi rusak, kelas tidak nyaman, dll.',
+                      'Keamanan: Kehilangan barang, ancaman dari orang lain.',
+                      'Masalah Kelompok: Konflik antar geng atau perpecahan di kelas.',
+                      'Lainnya'
+                    ].map(jenis => (
+                      <label key={jenis} className="flex items-start gap-3 p-3 rounded-xl border-2 border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={formData.jenisPengaduan.includes(jenis)}
+                          onChange={() => toggleArrayItem('jenisPengaduan', jenis)}
+                          className="w-5 h-5 mt-0.5 accent-purple-600 shrink-0"
+                        />
+                        <span className="text-sm font-medium text-slate-700">{jenis}</span>
+                      </label>
+                    ))}
+                    {formData.jenisPengaduan.includes('Lainnya') && (
+                      <input 
+                        type="text" 
+                        value={formData.jenisPengaduanLainnya}
+                        onChange={e => setFormData({...formData, jenisPengaduanLainnya: e.target.value})}
+                        className="w-full p-3 mt-2 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none text-sm"
+                        placeholder="Sebutkan jenis pengaduan lainnya..."
+                        required
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Siapa saja yang terlibat?</label>
+                  <p className="text-xs text-slate-500 mb-2">Sebutkan nama atau inisial jika tahu</p>
+                  <input 
+                    type="text" 
+                    value={formData.pihakTerlibat}
+                    onChange={e => setFormData({...formData, pihakTerlibat: e.target.value})}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none transition-all"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Kapan dan di mana kejadiannya?</label>
+                  <input 
+                    type="text" 
+                    value={formData.waktuTempat}
+                    onChange={e => setFormData({...formData, waktuTempat: e.target.value})}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none transition-all"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Kronologi Kejadian</label>
+                  <p className="text-xs text-slate-500 mb-2">Ceritakan secara singkat apa yang terjadi</p>
+                  <textarea 
+                    value={formData.kronologi}
+                    onChange={e => setFormData({...formData, kronologi: e.target.value})}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none transition-all min-h-[120px]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Apakah ada saksi mata?</label>
+                  <p className="text-xs text-slate-500 mb-2">Siswa lain atau guru yang melihat</p>
+                  <input 
+                    type="text" 
+                    value={formData.saksi}
+                    onChange={e => setFormData({...formData, saksi: e.target.value})}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Bukti Pendukung (Jika ada)</label>
+                  <p className="text-xs text-slate-500 mb-2">Foto luka, tangkapan layar chat, dll.</p>
+                  <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center bg-slate-50">
+                    <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm text-slate-500 font-medium">Upload file bukti</p>
+                    <input type="file" className="mt-4 text-xs text-slate-500 w-full" accept="image/*" />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 3: Khusus Kelompok */}
+          {step === 3 && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-5">
+                <h3 className="text-xl font-bold text-slate-800 border-b pb-4">Bagian 3: Khusus Pengaduan Kelompok</h3>
+                
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Nama kelompok atau kelas yang berkonflik</label>
+                  <input 
+                    type="text" 
+                    value={formData.namaKelompok}
+                    onChange={e => setFormData({...formData, namaKelompok: e.target.value})}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none transition-all"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Apa penyebab utama perselisihan ini?</label>
+                  <textarea 
+                    value={formData.penyebab}
+                    onChange={e => setFormData({...formData, penyebab: e.target.value})}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none transition-all min-h-[100px]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3">Sudah berapa lama masalah ini berlangsung?</label>
+                  <div className="space-y-2">
+                    {['Baru hari ini', 'Seminggu terakhir', 'Sudah sangat lama (berbulan-bulan)'].map(lama => (
+                      <label key={lama} className="flex items-center gap-3 p-4 rounded-xl border-2 border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input 
+                          type="radio" 
+                          name="lamaMasalah" 
+                          checked={formData.lamaMasalah === lama}
+                          onChange={() => setFormData({...formData, lamaMasalah: lama})}
+                          className="w-5 h-5 accent-purple-600"
+                          required
+                        />
+                        <span className="font-medium text-slate-700">{lama}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3">Apakah sudah pernah ada upaya damai sebelumnya?</label>
+                  <div className="flex gap-4">
+                    {['Ya', 'Tidak'].map(upaya => (
+                      <label key={upaya} className="flex-1 flex items-center gap-3 p-4 rounded-xl border-2 border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input 
+                          type="radio" 
+                          name="upayaDamai" 
+                          checked={formData.upayaDamai === upaya}
+                          onChange={() => setFormData({...formData, upayaDamai: upaya})}
+                          className="w-5 h-5 accent-purple-600"
+                          required
+                        />
+                        <span className="font-medium text-slate-700">{upaya}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 4: Harapan */}
+          {step === 4 && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-5">
+                <h3 className="text-xl font-bold text-slate-800 border-b pb-4">Bagian 4: Harapan & Tindak Lanjut</h3>
+                
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3">Apa yang kamu inginkan dari pihak sekolah setelah laporan ini?</label>
+                  <div className="space-y-2">
+                    {[
+                      'Mediasi (dipertemukan untuk damai).',
+                      'Pemberian sanksi tegas kepada pelaku.',
+                      'Perlindungan tambahan agar saya merasa aman.',
+                      'Cukup dicatat sebagai laporan saja dulu.'
+                    ].map(harap => (
+                      <label key={harap} className="flex items-start gap-3 p-3 rounded-xl border-2 border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={formData.harapan.includes(harap)}
+                          onChange={() => toggleArrayItem('harapan', harap)}
+                          className="w-5 h-5 mt-0.5 accent-purple-600 shrink-0"
+                        />
+                        <span className="text-sm font-medium text-slate-700">{harap}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Bagaimana kami bisa menghubungimu untuk kabar selanjutnya?</label>
+                  <p className="text-xs text-slate-500 mb-2">Nomor WA/DM Instagram - Ingatkan bahwa ini hanya akan diakses oleh Guru BK yang bertugas</p>
+                  <input 
+                    type="text" 
+                    value={formData.kontak}
+                    onChange={e => setFormData({...formData, kontak: e.target.value})}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-purple-500 outline-none transition-all"
+                    placeholder="Contoh: WA 08123456789"
+                    required
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Navigation Buttons */}
+          <div className="flex gap-3 pt-4">
+            {step > 1 && (
+              <button 
+                type="button" 
+                onClick={handlePrev}
+                className="flex-1 bg-white border-2 border-slate-200 text-slate-600 py-4 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-colors"
+              >
+                Kembali
+              </button>
+            )}
+            <button 
+              type="submit" 
+              disabled={isSubmitting || (step === 2 && formData.jenisPengaduan.length === 0) || (step === 4 && formData.harapan.length === 0)}
+              className="flex-[2] bg-purple-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-purple-200 hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? <RefreshCw className="w-6 h-6 animate-spin" /> : (step === 4 ? 'Kirim Laporan' : 'Selanjutnya')}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -1196,27 +1625,58 @@ const ReportingForm = ({ user }: { user: User }) => {
 const ModuleList = () => {
   const [modules, setModules] = useState<Module[]>([]);
 
+  const defaultModules: Module[] = [
+    {
+      id: 1,
+      title: "Mengatasi Kecemasan Menghadapi Ujian",
+      content: "Kecemasan saat ujian adalah hal yang wajar. Beberapa cara untuk mengatasinya antara lain: persiapan yang matang, mengatur pola tidur, melakukan relaksasi pernapasan sebelum ujian, dan berpikir positif. Jangan lupa untuk selalu berdoa dan meminta restu orang tua.",
+      category: "Akademik"
+    },
+    {
+      id: 2,
+      title: "Membangun Kepercayaan Diri",
+      content: "Kepercayaan diri bukan bawaan lahir, melainkan keterampilan yang bisa dilatih. Mulailah dengan mengenali kelebihanmu, berhenti membandingkan diri dengan orang lain, berani mencoba hal baru, dan selalu bersyukur atas apa yang kamu miliki.",
+      category: "Pribadi"
+    },
+    {
+      id: 3,
+      title: "Cara Menghadapi Bullying",
+      content: "Jika kamu mengalami bullying, jangan diam saja. Ceritakan kepada orang dewasa yang kamu percayai (orang tua atau guru BK). Jangan membalas dengan kekerasan, tetap tenang, dan hindari situasi yang berpotensi membahayakan dirimu. Ingat, kamu tidak sendirian.",
+      category: "Sosial"
+    },
+    {
+      id: 4,
+      title: "Manajemen Waktu Belajar",
+      content: "Banyak siswa kesulitan membagi waktu antara belajar, bermain, dan istirahat. Cobalah membuat jadwal harian, gunakan teknik Pomodoro (25 menit belajar, 5 menit istirahat), hindari menunda-nunda pekerjaan, dan kurangi gangguan seperti notifikasi HP saat belajar.",
+      category: "Akademik"
+    }
+  ];
+
   useEffect(() => {
     supabase.from('modules').select('*').order('created_at', { ascending: false })
       .then(({ data }) => {
-        if (data) setModules(data);
+        if (data && data.length > 0) {
+          setModules(data);
+        } else {
+          setModules(defaultModules);
+        }
       });
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 w-full">
+    <div className="min-h-screen bg-slate-50 w-full pb-32">
       <Header title="Modul BK" />
       <div className="p-6 space-y-4 max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {modules.map(m => (
-          <div key={m.id} className="bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm h-full">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider bg-red-100 text-red-600 px-2 py-1 rounded">
+          <div key={m.id} className="bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm h-full flex flex-col">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-600 px-3 py-1 rounded-full">
                 {m.category.replace('_', ' ')}
               </span>
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">{m.title}</h3>
-            <p className="text-slate-600 line-clamp-3">{m.content}</p>
-            <button className="mt-4 text-red-600 font-bold flex items-center gap-1">
+            <h3 className="text-lg font-bold text-slate-800 mb-3 leading-tight">{m.title}</h3>
+            <p className="text-sm text-slate-600 line-clamp-4 leading-relaxed flex-1">{m.content}</p>
+            <button className="mt-6 text-rose-600 font-bold flex items-center gap-1 text-sm hover:text-rose-700 transition-colors">
               Baca Selengkapnya <ChevronLeft className="w-4 h-4 rotate-180" />
             </button>
           </div>
@@ -1646,69 +2106,292 @@ const HistoryView = ({ user }: { user: User }) => {
   );
 };
 
-const SelfHealing = () => (
-  <div className="min-h-screen bg-slate-50 pb-32 w-full">
-    <Header title="Self Healing" />
-    <div className="p-8 space-y-8 max-w-2xl mx-auto">
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-8 rounded-[3rem] text-white shadow-2xl shadow-indigo-200 relative overflow-hidden"
-      >
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl rounded-full" />
-        <h3 className="text-display text-2xl font-bold mb-3">Tarik Napas...</h3>
-        <p className="text-sm opacity-80 font-medium">Luangkan waktu sejenak untuk menenangkan jiwamu.</p>
-        
-        <div className="mt-12 flex justify-center">
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.4, 1],
-              rotate: [0, 90, 180, 270, 360]
-            }}
-            transition={{ 
-              duration: 8, 
-              repeat: Infinity, 
-              ease: "easeInOut" 
-            }}
-            className="w-40 h-40 bg-white/10 rounded-[3rem] flex items-center justify-center border border-white/20 backdrop-blur-md"
-          >
-            <div className="w-20 h-20 bg-white rounded-full shadow-[0_0_40px_rgba(255,255,255,0.5)]" />
-          </motion.div>
-        </div>
-        
-        <div className="mt-12 text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] opacity-60">Breathe In • Breathe Out</p>
-        </div>
-      </motion.div>
-      
-      <div className="grid grid-cols-1 gap-5">
+const SelfHealing = () => {
+  const [journalEntry, setJournalEntry] = useState('');
+  const [savedJournal, setSavedJournal] = useState('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('rubikon_journal');
+    if (saved) setSavedJournal(saved);
+  }, []);
+
+  const saveJournal = () => {
+    if (journalEntry.trim()) {
+      localStorage.setItem('rubikon_journal', journalEntry);
+      setSavedJournal(journalEntry);
+      setJournalEntry('');
+      alert('Jurnal syukur berhasil disimpan!');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-32 w-full">
+      <Header title="Self Healing" />
+      <div className="p-6 space-y-8 max-w-2xl mx-auto">
         <motion.div 
-          whileHover={{ x: 10 }}
-          className="card-neo p-5 flex items-center gap-5"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-8 rounded-[3rem] text-white shadow-2xl shadow-indigo-200 relative overflow-hidden"
         >
-          <div className="bg-blue-100 p-4 rounded-2xl"><Heart className="text-blue-600 w-6 h-6" /></div>
-          <div>
-            <h4 className="text-display font-bold text-slate-800">Musik Relaksasi</h4>
-            <p className="text-xs text-slate-400 font-medium">Suara alam yang menenangkan</p>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl rounded-full" />
+          <h3 className="text-display text-2xl font-bold mb-3">Tarik Napas...</h3>
+          <p className="text-sm opacity-80 font-medium">Luangkan waktu sejenak untuk menenangkan jiwamu.</p>
+          
+          <div className="mt-12 flex justify-center">
+            <motion.div 
+              animate={{ 
+                scale: [1, 1.4, 1],
+                rotate: [0, 90, 180, 270, 360]
+              }}
+              transition={{ 
+                duration: 8, 
+                repeat: Infinity, 
+                ease: "easeInOut" 
+              }}
+              className="w-40 h-40 bg-white/10 rounded-[3rem] flex items-center justify-center border border-white/20 backdrop-blur-md"
+            >
+              <div className="w-20 h-20 bg-white rounded-full shadow-[0_0_40px_rgba(255,255,255,0.5)]" />
+            </motion.div>
           </div>
-          <ChevronLeft className="w-4 h-4 rotate-180 ml-auto text-slate-300" />
+          
+          <div className="mt-12 text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.3em] opacity-60">Breathe In • Breathe Out</p>
+          </div>
         </motion.div>
         
-        <motion.div 
-          whileHover={{ x: 10 }}
-          className="card-neo p-5 flex items-center gap-5"
-        >
-          <div className="bg-emerald-100 p-4 rounded-2xl"><BookOpen className="text-emerald-600 w-6 h-6" /></div>
-          <div>
-            <h4 className="text-display font-bold text-slate-800">Jurnal Syukur</h4>
-            <p className="text-xs text-slate-400 font-medium">Tuliskan 3 hal baik hari ini</p>
+        <div className="space-y-6">
+          {/* Musik Relaksasi */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-blue-100 p-3 rounded-2xl"><Heart className="text-blue-600 w-6 h-6" /></div>
+              <div>
+                <h4 className="text-display font-bold text-slate-800 text-lg">Musik Relaksasi</h4>
+                <p className="text-xs text-slate-500 font-medium">Dengarkan musik untuk menenangkan pikiran</p>
+              </div>
+            </div>
+            <div className="rounded-2xl overflow-hidden bg-slate-100 aspect-video relative">
+              <iframe 
+                className="absolute inset-0 w-full h-full"
+                src="https://www.youtube.com/embed/lFcSrYw-ARY?si=Y0mK-yH9i9t9d45x" 
+                title="Relaxation Music" 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowFullScreen
+              ></iframe>
+            </div>
           </div>
-          <ChevronLeft className="w-4 h-4 rotate-180 ml-auto text-slate-300" />
-        </motion.div>
+          
+          {/* Jurnal Syukur */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-emerald-100 p-3 rounded-2xl"><BookOpen className="text-emerald-600 w-6 h-6" /></div>
+              <div>
+                <h4 className="text-display font-bold text-slate-800 text-lg">Jurnal Syukur</h4>
+                <p className="text-xs text-slate-500 font-medium">Tuliskan 3 hal baik hari ini</p>
+              </div>
+            </div>
+            
+            <textarea 
+              value={journalEntry}
+              onChange={(e) => setJournalEntry(e.target.value)}
+              placeholder="Hari ini saya bersyukur karena..."
+              className="w-full p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-emerald-500 outline-none min-h-[120px] mb-4 text-sm"
+            />
+            <button 
+              onClick={saveJournal}
+              className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-colors"
+            >
+              Simpan Jurnal
+            </button>
+
+            {savedJournal && (
+              <div className="mt-6 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Jurnal Terakhirmu:</p>
+                <p className="text-sm text-slate-700 italic">"{savedJournal}"</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
+
+const LearningStyleTest = () => {
+  const [step, setStep] = useState(0);
+  const [scores, setScores] = useState({ visual: 0, auditori: 0, kinestetik: 0 });
+  const [result, setResult] = useState<string | null>(null);
+
+  const questions = [
+    {
+      q: "Saat belajar hal baru, saya lebih suka...",
+      options: [
+        { text: "Melihat gambar, diagram, atau membaca buku.", type: "visual" },
+        { text: "Mendengarkan penjelasan guru atau rekaman.", type: "auditori" },
+        { text: "Langsung praktik atau mencoba sendiri.", type: "kinestetik" }
+      ]
+    },
+    {
+      q: "Saat mengingat sesuatu, saya biasanya...",
+      options: [
+        { text: "Mengingat wajah atau bentuknya.", type: "visual" },
+        { text: "Mengingat suara atau apa yang dikatakan.", type: "auditori" },
+        { text: "Mengingat apa yang saya lakukan saat itu.", type: "kinestetik" }
+      ]
+    },
+    {
+      q: "Saat waktu luang, saya lebih suka...",
+      options: [
+        { text: "Membaca buku atau menonton film.", type: "visual" },
+        { text: "Mendengarkan musik atau podcast.", type: "auditori" },
+        { text: "Berolahraga atau membuat sesuatu.", type: "kinestetik" }
+      ]
+    },
+    {
+      q: "Saat marah atau emosi, saya biasanya...",
+      options: [
+        { text: "Diam dan membayangkan sesuatu.", type: "visual" },
+        { text: "Mengomel atau berbicara dengan nada tinggi.", type: "auditori" },
+        { text: "Membanting pintu atau berjalan mondar-mandir.", type: "kinestetik" }
+      ]
+    },
+    {
+      q: "Saat mengeja kata yang sulit, saya akan...",
+      options: [
+        { text: "Membayangkan kata itu di pikiran saya.", type: "visual" },
+        { text: "Mengejanya dengan suara keras.", type: "auditori" },
+        { text: "Menulisnya di udara atau di kertas.", type: "kinestetik" }
+      ]
+    }
+  ];
+
+  const handleAnswer = (type: string) => {
+    setScores(prev => ({ ...prev, [type]: prev[type as keyof typeof prev] + 1 }));
+    
+    if (step < questions.length - 1) {
+      setStep(step + 1);
+    } else {
+      // Calculate result
+      const newScores = { ...scores, [type]: scores[type as keyof typeof scores] + 1 };
+      let maxScore = 0;
+      let maxType = '';
+      
+      Object.entries(newScores).forEach(([k, v]) => {
+        const val = Number(v);
+        if (val > maxScore) {
+          maxScore = val;
+          maxType = k;
+        }
+      });
+      
+      setResult(maxType);
+    }
+  };
+
+  const getResultDetails = () => {
+    switch(result) {
+      case 'visual':
+        return {
+          title: "Visual (Melihat)",
+          desc: "Kamu belajar paling baik dengan melihat. Gambar, diagram, warna, dan catatan yang rapi sangat membantumu memahami informasi.",
+          tips: ["Gunakan stabilo berwarna", "Buat mind map", "Tonton video pembelajaran", "Duduk di barisan depan"]
+        };
+      case 'auditori':
+        return {
+          title: "Auditori (Mendengar)",
+          desc: "Kamu belajar paling baik dengan mendengarkan. Penjelasan lisan, diskusi, dan mendengarkan ulang rekaman sangat efektif untukmu.",
+          tips: ["Rekam penjelasan guru", "Belajar sambil berdiskusi", "Baca catatan dengan suara keras", "Gunakan jembatan keledai (lagu/nada)"]
+        };
+      case 'kinestetik':
+        return {
+          title: "Kinestetik (Melakukan)",
+          desc: "Kamu belajar paling baik dengan bergerak dan menyentuh. Praktik langsung dan aktivitas fisik membantumu mengingat lebih baik.",
+          tips: ["Belajar sambil berjalan-jalan kecil", "Gunakan alat peraga", "Sering istirahat sejenak saat belajar", "Lakukan eksperimen langsung"]
+        };
+      default:
+        return { title: "", desc: "", tips: [] };
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 w-full pb-32">
+      <Header title="Tes Gaya Belajar" />
+      <div className="p-6 max-w-2xl mx-auto">
+        {!result ? (
+          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+            <div className="mb-8">
+              <div className="flex justify-between text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                <span>Pertanyaan {step + 1}</span>
+                <span>Dari {questions.length}</span>
+              </div>
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-emerald-500 h-full transition-all duration-500"
+                  style={{ width: `${((step) / questions.length) * 100}%` }}
+                />
+              </div>
+            </div>
+            
+            <h3 className="text-xl font-bold text-slate-800 mb-6 leading-relaxed">
+              {questions[step].q}
+            </h3>
+            
+            <div className="space-y-3">
+              {questions[step].options.map((opt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleAnswer(opt.type)}
+                  className="w-full text-left p-4 rounded-2xl border-2 border-slate-100 hover:border-emerald-500 hover:bg-emerald-50 transition-colors font-medium text-slate-700"
+                >
+                  {opt.text}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 text-center"
+          >
+            <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Brain className="w-12 h-12 text-emerald-600" />
+            </div>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-2">Gaya Belajarmu Adalah</h2>
+            <h3 className="text-3xl font-bold text-emerald-600 mb-4">{getResultDetails().title}</h3>
+            <p className="text-slate-600 mb-8 leading-relaxed">{getResultDetails().desc}</p>
+            
+            <div className="bg-slate-50 p-6 rounded-2xl text-left border border-slate-100">
+              <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-emerald-200 text-emerald-700 flex items-center justify-center text-xs">💡</span>
+                Tips Belajar Untukmu:
+              </h4>
+              <ul className="space-y-3">
+                {getResultDetails().tips.map((tip, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-sm text-slate-600">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            
+            <button 
+              onClick={() => {
+                setStep(0);
+                setScores({ visual: 0, auditori: 0, kinestetik: 0 });
+                setResult(null);
+              }}
+              className="mt-8 w-full bg-slate-100 text-slate-700 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-colors"
+            >
+              Ulangi Tes
+            </button>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const ExternalFrame = ({ url, title }: { url: string, title: string }) => (
   <div className="flex flex-col h-[calc(100vh-64px)]">
@@ -1894,7 +2577,7 @@ export default function App() {
               <Route path="/admin" element={<CounselorDashboard user={user} onLogout={handleLogout} />} />
               <Route path="/healing" element={<SelfHealing />} />
               <Route path="/info" element={<ExternalFrame title="Info Sekolah Lanjutan" url="https://sekolah.data.kemendikdasmen.go.id/" />} />
-              <Route path="/test" element={<ExternalFrame title="Tes Gaya Belajar" url="https://akupintar.id/mp/tes-gaya-belajar" />} />
+              <Route path="/test" element={<LearningStyleTest />} />
             </Routes>
           </AnimatePresence>
           
