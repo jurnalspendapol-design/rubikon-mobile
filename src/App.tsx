@@ -34,6 +34,7 @@ interface User {
   role: 'student' | 'counselor';
   email: string;
   class?: string;
+  avatar_url?: string;
 }
 
 interface Module {
@@ -79,9 +80,13 @@ const Header = ({ title, showBack = true, user, onProfileClick }: { title: strin
           {user && onProfileClick && (
             <button 
               onClick={onProfileClick}
-              className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-400 flex items-center justify-center text-white font-bold text-sm shadow-md transition-transform active:scale-90"
+              className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-400 flex items-center justify-center text-white font-bold text-sm shadow-md transition-transform active:scale-90 overflow-hidden"
             >
-              {user.name.charAt(0)}
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                user.name.charAt(0)
+              )}
             </button>
           )}
         </div>
@@ -90,12 +95,14 @@ const Header = ({ title, showBack = true, user, onProfileClick }: { title: strin
   );
 };
 
-const ProfileModal = ({ user, isOpen, onClose, onLogout }: { user: User, isOpen: boolean, onClose: () => void, onLogout: () => void }) => {
+const ProfileModal = ({ user, isOpen, onClose, onLogout, onUpdateUser }: { user: User, isOpen: boolean, onClose: () => void, onLogout: () => void, onUpdateUser?: (user: User) => void }) => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordStatus, setPasswordStatus] = useState<{type: 'error' | 'success', message: string} | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -108,6 +115,36 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout }: { user: User, isOpen:
       if (document.exitFullscreen) {
         document.exitFullscreen();
       }
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran foto maksimal 2MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        const { error } = await supabase.from('users').update({ avatar_url: base64String }).eq('id', user.id);
+        
+        if (error) throw error;
+        
+        if (onUpdateUser) {
+          onUpdateUser({ ...user, avatar_url: base64String });
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      alert('Gagal mengunggah foto profil');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -160,8 +197,28 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout }: { user: User, isOpen:
         </button>
 
         <div className="text-center mb-8">
-          <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-400 rounded-[2.5rem] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-blue-200">
-            <span className="text-white text-4xl font-bold">{user.name.charAt(0)}</span>
+          <div className="relative inline-block">
+            <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-400 rounded-[2.5rem] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-blue-200 overflow-hidden">
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white text-4xl font-bold">{user.name.charAt(0)}</span>
+              )}
+            </div>
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="absolute -bottom-2 -right-2 p-2 bg-white rounded-full shadow-lg border border-slate-100 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+            >
+              {isUploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleAvatarUpload} 
+              accept="image/*" 
+              className="hidden" 
+            />
           </div>
           <h2 className="text-display text-2xl font-bold text-slate-800">{user.name}</h2>
           <p className="text-slate-500 font-medium">{user.email}</p>
@@ -376,9 +433,8 @@ const Banner = ({ image, title, category, onClick }: { image: string, title: str
 
 // --- Pages ---
 
-const Home = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
+const Home = ({ user, onLogout, onProfileClick }: { user: User, onLogout: () => void, onProfileClick: () => void }) => {
   const navigate = useNavigate();
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [selectedBanner, setSelectedBanner] = useState<{title: string, category: string, content: string, image: string} | null>(null);
 
   const banners = [
@@ -404,13 +460,6 @@ const Home = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-indigo-50 to-purple-50 pb-32 w-full">
-      <ProfileModal 
-        user={user} 
-        isOpen={isProfileOpen} 
-        onClose={() => setIsProfileOpen(false)} 
-        onLogout={onLogout} 
-      />
-
       {/* Banner Detail Modal */}
       <AnimatePresence>
         {selectedBanner && (
@@ -456,10 +505,14 @@ const Home = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
         <div className="px-8 pt-10 pb-6 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => setIsProfileOpen(true)}
-            className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-400 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-200 transition-transform active:scale-90"
+            onClick={onProfileClick}
+            className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-400 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-200 transition-transform active:scale-90 overflow-hidden"
           >
-            {user.name.charAt(0)}
+            {user.avatar_url ? (
+              <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              user.name.charAt(0)
+            )}
           </button>
           <div>
             <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Good Morning,</p>
@@ -1747,17 +1800,34 @@ const ModuleList = () => {
   );
 };
 
-const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
+const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, onLogout: () => void, onProfileClick: () => void }) => {
   const [requests, setRequests] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [tab, setTab] = useState('requests');
   const [searchQuery, setSearchQuery] = useState('');
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [viewingHistory, setViewingHistory] = useState<any>(null);
   const [userHistory, setUserHistory] = useState<any[]>([]);
+
+  const updateRequestStatus = async (id: number, status: string) => {
+    const { error } = await supabase.from('counseling_requests').update({ status }).eq('id', id);
+    if (!error) {
+      setRequests(requests.map(r => r.id === id ? { ...r, status } : r));
+    } else {
+      alert('Gagal memperbarui status');
+    }
+  };
+
+  const updateReportStatus = async (id: number, status: string) => {
+    const { error } = await supabase.from('reports').update({ status }).eq('id', id);
+    if (!error) {
+      setReports(reports.map(r => r.id === id ? { ...r, status } : r));
+    } else {
+      alert('Gagal memperbarui status');
+    }
+  };
 
   const fetchUsers = async () => {
     let query = supabase.from('users').select('*').order('name', { ascending: true });
@@ -1870,13 +1940,7 @@ const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => vo
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32 w-full">
-      <ProfileModal 
-        user={user} 
-        isOpen={isProfileOpen} 
-        onClose={() => setIsProfileOpen(false)} 
-        onLogout={onLogout} 
-      />
-      <Header title="Dashboard Konselor" user={user} onProfileClick={() => setIsProfileOpen(true)} />
+      <Header title="Dashboard Konselor" user={user} onProfileClick={onProfileClick} />
       <div className="max-w-7xl mx-auto">
         <div className="p-6 flex gap-2 overflow-x-auto no-scrollbar">
         <button 
@@ -1914,7 +1978,9 @@ const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => vo
             <div key={r.id} className="card-neo p-6">
               <div className="flex justify-between items-start mb-4">
                 <h4 className="text-display font-bold text-slate-800 text-lg">{r.student_name}</h4>
-                <span className="text-[10px] bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-bold uppercase tracking-wider">{r.status}</span>
+                <span className="text-[10px] bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                  {r.status === 'accepted' ? 'Disetujui' : r.status === 'rejected' ? 'Ditolak' : r.status === 'confirmed' ? 'Dikonfirmasi' : r.status}
+                </span>
               </div>
               <div className="space-y-2 mb-6">
                 <p className="text-sm text-slate-500 font-medium"><strong>Masalah:</strong> {r.problem_type}</p>
@@ -1924,8 +1990,16 @@ const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => vo
                 </div>
               </div>
               <div className="flex gap-3">
-                <button className="flex-1 bg-emerald-500 text-white py-4 rounded-2xl text-sm font-bold text-display shadow-lg shadow-emerald-100">Terima</button>
-                <button className="flex-1 bg-slate-100 text-slate-400 py-4 rounded-2xl text-sm font-bold text-display">Tolak</button>
+                {r.status === 'pending' ? (
+                  <>
+                    <button onClick={() => updateRequestStatus(r.id, 'accepted')} className="flex-1 bg-emerald-500 text-white py-4 rounded-2xl text-sm font-bold text-display shadow-lg shadow-emerald-100">Terima</button>
+                    <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="flex-1 bg-slate-100 text-slate-400 py-4 rounded-2xl text-sm font-bold text-display">Tolak</button>
+                  </>
+                ) : (
+                  <div className="flex-1 text-center py-4 rounded-2xl text-sm font-bold text-slate-500 bg-slate-50">
+                    Status: {r.status === 'accepted' ? 'Disetujui' : r.status === 'rejected' ? 'Ditolak' : r.status === 'confirmed' ? 'Dikonfirmasi' : r.status}
+                  </div>
+                )}
               </div>
             </div>
           ))
@@ -1936,11 +2010,19 @@ const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => vo
             <div key={r.id} className="card-neo p-6">
               <div className="flex justify-between items-start mb-4">
                 <h4 className="text-display font-bold text-slate-800 text-lg">{r.is_anonymous ? 'Anonim' : r.student_name}</h4>
-                <span className="text-[10px] bg-purple-100 text-purple-600 px-3 py-1 rounded-full font-bold uppercase tracking-wider">{r.status}</span>
+                <span className="text-[10px] bg-purple-100 text-purple-600 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                  {r.status === 'read' ? 'Sudah Dibaca' : r.status}
+                </span>
               </div>
               <p className="text-sm text-slate-500 font-medium leading-relaxed">{r.content}</p>
               <div className="mt-6">
-                <button className="w-full bg-slate-900 text-white py-4 rounded-2xl text-sm font-bold text-display">Tandai Sudah Dibaca</button>
+                {r.status === 'pending' ? (
+                  <button onClick={() => updateReportStatus(r.id, 'read')} className="w-full bg-slate-900 text-white py-4 rounded-2xl text-sm font-bold text-display">Tandai Sudah Dibaca</button>
+                ) : (
+                  <div className="w-full text-center py-4 rounded-2xl text-sm font-bold text-slate-500 bg-slate-50">
+                    Status: {r.status === 'read' ? 'Sudah Dibaca' : r.status}
+                  </div>
+                )}
               </div>
             </div>
           ))
@@ -2122,12 +2204,26 @@ const CounselorDashboard = ({ user, onLogout }: { user: User, onLogout: () => vo
 const HistoryView = ({ user }: { user: User }) => {
   const [requests, setRequests] = useState<any[]>([]);
 
-  useEffect(() => {
+  const fetchRequests = () => {
     supabase.from('counseling_requests').select('*').eq('student_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) setRequests(data);
       });
+  };
+
+  useEffect(() => {
+    fetchRequests();
   }, [user.id]);
+
+  const handleConfirm = async (id: number) => {
+    const { error } = await supabase.from('counseling_requests').update({ status: 'confirmed' }).eq('id', id);
+    if (!error) {
+      alert('Terima kasih telah mengkonfirmasi jadwal konseling.');
+      fetchRequests();
+    } else {
+      alert('Gagal mengkonfirmasi.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-gray-50 to-zinc-50 pb-32 w-full">
@@ -2152,13 +2248,37 @@ const HistoryView = ({ user }: { user: User }) => {
                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{r.type}</span>
                 <span className={cn(
                   "text-[10px] font-bold uppercase px-3 py-1 rounded-full tracking-wider",
-                  r.status === 'completed' ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600"
+                  r.status === 'completed' || r.status === 'confirmed' ? "bg-emerald-100 text-emerald-600" : 
+                  r.status === 'accepted' ? "bg-blue-100 text-blue-600" :
+                  r.status === 'rejected' ? "bg-rose-100 text-rose-600" :
+                  "bg-slate-100 text-slate-600"
                 )}>
-                  {r.status}
+                  {r.status === 'accepted' ? 'Disetujui' : r.status === 'rejected' ? 'Ditolak' : r.status === 'confirmed' ? 'Dikonfirmasi' : r.status}
                 </span>
               </div>
               <h4 className="text-display font-bold text-slate-800 text-lg">{r.problem_type}</h4>
-              <p className="text-sm text-slate-400 font-medium mt-2">{new Date(r.preferred_time).toLocaleDateString('id-ID', { dateStyle: 'long' })}</p>
+              <p className="text-sm text-slate-400 font-medium mt-2">{new Date(r.preferred_time).toLocaleDateString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</p>
+              
+              {r.status === 'accepted' && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <div className="bg-blue-50 p-4 rounded-xl mb-4">
+                    <p className="text-sm text-blue-800 font-medium">Konselor telah menyetujui jadwal konseling Anda. Silakan konfirmasi kehadiran Anda.</p>
+                  </div>
+                  <button 
+                    onClick={() => handleConfirm(r.id)}
+                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition-colors"
+                  >
+                    Konfirmasi Kehadiran
+                  </button>
+                </div>
+              )}
+              {r.status === 'rejected' && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <div className="bg-rose-50 p-4 rounded-xl">
+                    <p className="text-sm text-rose-800 font-medium">Mohon maaf, jadwal konseling belum bisa disetujui saat ini. Silakan ajukan jadwal lain atau hubungi konselor secara langsung.</p>
+                  </div>
+                </div>
+              )}
             </motion.div>
           ))
         )}
@@ -2585,6 +2705,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('rubikon_user');
@@ -2628,14 +2749,24 @@ export default function App() {
       <Router>
         <div className="w-full bg-slate-50 min-h-screen relative overflow-x-hidden pb-24">
           <ChatModal isOpen={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} />
+          <ProfileModal 
+            user={user} 
+            isOpen={isProfileOpen} 
+            onClose={() => setIsProfileOpen(false)} 
+            onLogout={handleLogout}
+            onUpdateUser={(updatedUser) => {
+              setUser(updatedUser);
+              localStorage.setItem('rubikon_user', JSON.stringify(updatedUser));
+            }}
+          />
           <AnimatePresence mode="wait">
             <Routes>
-              <Route path="/" element={<Home user={user} onLogout={handleLogout} />} />
+              <Route path="/" element={<Home user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} />} />
               <Route path="/counseling" element={<CounselingForm user={user} />} />
               <Route path="/report" element={<ReportingForm user={user} />} />
               <Route path="/modules" element={<ModuleList />} />
               <Route path="/history" element={<HistoryView user={user} />} />
-              <Route path="/admin" element={<CounselorDashboard user={user} onLogout={handleLogout} />} />
+              <Route path="/admin" element={<CounselorDashboard user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} />} />
               <Route path="/healing" element={<SelfHealing />} />
               <Route path="/info" element={<ExternalFrame title="Info Sekolah Lanjutan" url="https://sekolah.data.kemendikdasmen.go.id/" />} />
               <Route path="/test" element={<LearningStyleTest />} />
@@ -2649,12 +2780,12 @@ export default function App() {
                 <div className="p-2 bg-blue-50 rounded-xl">
                   <LayoutDashboard className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">Beranda</span>
               </Link>
               
               <Link to="/history" className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
                 <History className="w-5 h-5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">Riwayat</span>
               </Link>
               
               {/* Center Action Button */}
@@ -2671,12 +2802,12 @@ export default function App() {
 
               <Link to="/modules" className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
                 <BookOpen className="w-5 h-5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Learn</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">Belajar</span>
               </Link>
               
-              <button className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
+              <button onClick={() => setIsProfileOpen(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-600 transition-colors">
                 <User className="w-5 h-5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Me</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">Profil</span>
               </button>
             </div>
           )}
