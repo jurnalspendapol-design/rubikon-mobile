@@ -31,7 +31,7 @@ import { supabase } from './lib/supabase';
 interface User {
   id: number;
   name: string;
-  role: 'student' | 'counselor';
+  role: 'student' | 'counselor' | 'superadmin';
   email: string;
   class?: string;
   avatar_url?: string;
@@ -128,9 +128,9 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, onUpdateUser }: { user:
     }
 
     setIsUploading(true);
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
         const base64String = reader.result as string;
         const { error } = await supabase.from('users').update({ avatar_url: base64String }).eq('id', user.id);
         
@@ -139,13 +139,17 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, onUpdateUser }: { user:
         if (onUpdateUser) {
           onUpdateUser({ ...user, avatar_url: base64String });
         }
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      alert('Gagal mengunggah foto profil');
-    } finally {
+      } catch (err) {
+        alert('Gagal mengunggah foto profil');
+      } finally {
+        setIsUploading(false);
+      }
+    };
+    reader.onerror = () => {
+      alert('Gagal membaca file');
       setIsUploading(false);
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -628,11 +632,11 @@ const Home = ({ user, onLogout, onProfileClick }: { user: User, onLogout: () => 
         </div>
       </div>
 
-      {user.role === 'counselor' && (
+      {(user.role === 'counselor' || user.role === 'superadmin') && (
         <div className="px-8 pb-12 max-w-md mx-auto">
           <Link to="/admin" className="flex items-center justify-center gap-3 p-5 bg-slate-900 text-white rounded-[2rem] font-bold shadow-xl shadow-slate-200 transition-transform active:scale-95">
             <LayoutDashboard className="w-5 h-5 text-blue-400" />
-            <span className="text-display">Dashboard Konselor</span>
+            <span className="text-display">{user.role === 'superadmin' ? 'Dashboard Super Admin' : 'Dashboard Konselor'}</span>
           </Link>
         </div>
       )}
@@ -644,6 +648,7 @@ const Home = ({ user, onLogout, onProfileClick }: { user: User, onLogout: () => 
 const CounselingForm = ({ user }: { user: User }) => {
   const [type, setType] = useState<'pribadi' | 'kelompok'>('pribadi');
   const [submitted, setSubmitted] = useState(false);
+  const [selectedCounselor, setSelectedCounselor] = useState('');
   
   // Form States
   const [pribadiData, setPribadiData] = useState({
@@ -685,10 +690,18 @@ const CounselingForm = ({ user }: { user: User }) => {
       return;
     }
 
+    if (!selectedCounselor) {
+      alert("Silakan pilih guru BK/Konselor terlebih dahulu.");
+      return;
+    }
+
+    const problemTypeStr = type === 'pribadi' ? pribadiData.reasons.join(', ') : kelompokData.topics.join(', ');
+    const finalProblemType = `${problemTypeStr} (Konselor: ${selectedCounselor})`;
+
     const { error } = await supabase.from('counseling_requests').insert({
       student_id: user.id,
       type,
-      problem_type: type === 'pribadi' ? pribadiData.reasons.join(', ') : kelompokData.topics.join(', '),
+      problem_type: finalProblemType,
       preferred_time: type === 'pribadi' ? pribadiData.time : 'Sesuai Jadwal Kelompok',
       notes: type === 'pribadi' ? pribadiData.story : kelompokData.whyInterested,
       form_data: JSON.stringify(data)
@@ -767,6 +780,35 @@ const CounselingForm = ({ user }: { user: User }) => {
           >
             Kelompok
           </button>
+        </div>
+
+        <div className="mb-8 space-y-4">
+          <h3 className="text-lg font-bold text-blue-600 flex items-center gap-2">
+            Pilih Guru BK / Konselor
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            {['Bu Ayu', 'Bu Jiha', 'Bu Rina', 'Bu Retno'].map(counselor => (
+              <button
+                key={counselor}
+                type="button"
+                onClick={() => setSelectedCounselor(counselor)}
+                className={cn(
+                  "p-4 rounded-2xl border-2 text-sm font-bold transition-all flex flex-col items-center justify-center gap-2",
+                  selectedCounselor === counselor 
+                    ? "border-blue-600 bg-blue-50 text-blue-700 shadow-md" 
+                    : "border-slate-100 bg-white text-slate-500 hover:border-blue-200 hover:bg-blue-50/50"
+                )}
+              >
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center text-lg",
+                  selectedCounselor === counselor ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400"
+                )}>
+                  {counselor.split(' ')[1]?.charAt(0) || counselor.charAt(0)}
+                </div>
+                {counselor}
+              </button>
+            ))}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -1940,7 +1982,7 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32 w-full">
-      <Header title="Dashboard Konselor" user={user} onProfileClick={onProfileClick} />
+      <Header title={user.role === 'superadmin' ? "Dashboard Super Admin" : "Dashboard Konselor"} user={user} onProfileClick={onProfileClick} />
       <div className="max-w-7xl mx-auto">
         <div className="p-6 flex gap-2 overflow-x-auto no-scrollbar">
         <button 
@@ -1961,15 +2003,17 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
         >
           Laporan ({reports.length})
         </button>
-        <button 
-          onClick={() => setTab('users')}
-          className={cn(
-            "flex-1 min-w-[120px] py-4 rounded-2xl font-bold text-display transition-all",
-            tab === 'users' ? "bg-slate-900 text-white shadow-lg" : "bg-white text-slate-400"
-          )}
-        >
-          Pengguna
-        </button>
+        {user.role === 'superadmin' && (
+          <button 
+            onClick={() => setTab('users')}
+            className={cn(
+              "flex-1 min-w-[120px] py-4 rounded-2xl font-bold text-display transition-all",
+              tab === 'users' ? "bg-slate-900 text-white shadow-lg" : "bg-white text-slate-400"
+            )}
+          >
+            Pengguna
+          </button>
+        )}
       </div>
 
       <div className="px-6 space-y-5">
