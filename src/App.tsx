@@ -102,7 +102,24 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, onUpdateUser }: { user:
   const [passwordStatus, setPasswordStatus] = useState<{type: 'error' | 'success', message: string} | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [learningStyle, setLearningStyle] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && user.role === 'student') {
+      supabase.from('counseling_requests')
+        .select('problem_type')
+        .eq('student_id', user.id)
+        .eq('type', 'tes_gaya_belajar')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setLearningStyle(data[0].problem_type);
+          }
+        });
+    }
+  }, [isOpen, user.id, user.role]);
 
   if (!isOpen) return null;
 
@@ -307,6 +324,12 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, onUpdateUser }: { user:
                   <span className="text-sm text-slate-500 font-medium">Status Akun</span>
                   <span className="text-sm text-emerald-500 font-bold">Aktif</span>
                 </div>
+                {user.role === 'student' && learningStyle && (
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-200">
+                    <span className="text-sm text-slate-500 font-medium">Gaya Belajar</span>
+                    <span className="text-sm text-blue-600 font-bold capitalize">{learningStyle}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2349,10 +2372,12 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
                 userHistory.map(h => (
                   <div key={h.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">{h.type}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
+                        {h.type === 'tes_gaya_belajar' ? 'Tes Gaya Belajar' : h.type}
+                      </span>
                       <span className="text-[10px] font-bold text-slate-400">{new Date(h.created_at).toLocaleDateString()}</span>
                     </div>
-                    <h4 className="font-bold text-slate-800 mb-1">{h.problem_type}</h4>
+                    <h4 className="font-bold text-slate-800 mb-1 capitalize">{h.problem_type}</h4>
                     <p className="text-xs text-slate-500 italic">"{h.notes}"</p>
                   </div>
                 ))
@@ -2410,39 +2435,63 @@ const HistoryView = ({ user }: { user: User }) => {
               className="card-neo p-6"
             >
               <div className="flex justify-between items-start mb-3">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{r.type}</span>
-                <span className={cn(
-                  "text-[10px] font-bold uppercase px-3 py-1 rounded-full tracking-wider",
-                  r.status === 'completed' || r.status === 'confirmed' ? "bg-emerald-100 text-emerald-600" : 
-                  r.status === 'accepted' ? "bg-blue-100 text-blue-600" :
-                  r.status === 'rejected' ? "bg-rose-100 text-rose-600" :
-                  "bg-slate-100 text-slate-600"
-                )}>
-                  {r.status === 'accepted' ? 'Disetujui' : r.status === 'rejected' ? 'Ditolak' : r.status === 'confirmed' ? 'Dikonfirmasi' : r.status}
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  {r.type === 'tes_gaya_belajar' ? 'Tes Gaya Belajar' : r.type}
                 </span>
+                {r.type !== 'tes_gaya_belajar' && (
+                  <span className={cn(
+                    "text-[10px] font-bold uppercase px-3 py-1 rounded-full tracking-wider",
+                    r.status === 'completed' || r.status === 'confirmed' ? "bg-emerald-100 text-emerald-600" : 
+                    r.status === 'accepted' ? "bg-blue-100 text-blue-600" :
+                    r.status === 'rejected' ? "bg-rose-100 text-rose-600" :
+                    "bg-slate-100 text-slate-600"
+                  )}>
+                    {r.status === 'accepted' ? 'Disetujui' : r.status === 'rejected' ? 'Ditolak' : r.status === 'confirmed' ? 'Dikonfirmasi' : r.status}
+                  </span>
+                )}
               </div>
-              <h4 className="text-display font-bold text-slate-800 text-lg">{r.problem_type}</h4>
-              <p className="text-sm text-slate-400 font-medium mt-2">{new Date(r.preferred_time).toLocaleDateString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</p>
               
-              {r.status === 'accepted' && (
-                <div className="mt-4 pt-4 border-t border-slate-100">
-                  <div className="bg-blue-50 p-4 rounded-xl mb-4">
-                    <p className="text-sm text-blue-800 font-medium">Konselor telah menyetujui jadwal konseling Anda. Silakan konfirmasi kehadiran Anda.</p>
+              {r.type === 'tes_gaya_belajar' ? (
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
+                      <Brain className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h4 className="text-display font-bold text-slate-800 text-lg capitalize">{r.problem_type}</h4>
+                      <p className="text-xs text-slate-400 font-medium">{new Date(r.created_at).toLocaleDateString('id-ID', { dateStyle: 'long' })}</p>
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => handleConfirm(r.id)}
-                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition-colors"
-                  >
-                    Konfirmasi Kehadiran
-                  </button>
-                </div>
-              )}
-              {r.status === 'rejected' && (
-                <div className="mt-4 pt-4 border-t border-slate-100">
-                  <div className="bg-rose-50 p-4 rounded-xl">
-                    <p className="text-sm text-rose-800 font-medium">Mohon maaf, jadwal konseling belum bisa disetujui saat ini. Silakan ajukan jadwal lain atau hubungi konselor secara langsung.</p>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p className="text-sm text-slate-600 italic">{r.notes}</p>
                   </div>
-                </div>
+                </>
+              ) : (
+                <>
+                  <h4 className="text-display font-bold text-slate-800 text-lg">{r.problem_type}</h4>
+                  <p className="text-sm text-slate-400 font-medium mt-2">{new Date(r.preferred_time).toLocaleDateString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</p>
+                  
+                  {r.status === 'accepted' && (
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                      <div className="bg-blue-50 p-4 rounded-xl mb-4">
+                        <p className="text-sm text-blue-800 font-medium">Konselor telah menyetujui jadwal konseling Anda. Silakan konfirmasi kehadiran Anda.</p>
+                      </div>
+                      <button 
+                        onClick={() => handleConfirm(r.id)}
+                        className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition-colors"
+                      >
+                        Konfirmasi Kehadiran
+                      </button>
+                    </div>
+                  )}
+                  {r.status === 'rejected' && (
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                      <div className="bg-rose-50 p-4 rounded-xl">
+                        <p className="text-sm text-rose-800 font-medium">Mohon maaf, jadwal konseling belum bisa disetujui saat ini. Silakan ajukan jadwal lain atau hubungi konselor secara langsung.</p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           ))
@@ -2563,10 +2612,11 @@ const SelfHealing = () => {
   );
 };
 
-const LearningStyleTest = () => {
+const LearningStyleTest = ({ user }: { user: User }) => {
   const [step, setStep] = useState(0);
   const [scores, setScores] = useState({ visual: 0, auditori: 0, kinestetik: 0 });
   const [result, setResult] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const questions = [
     {
@@ -2608,17 +2658,57 @@ const LearningStyleTest = () => {
         { text: "Mengejanya dengan suara keras.", type: "auditori" },
         { text: "Menulisnya di udara atau di kertas.", type: "kinestetik" }
       ]
+    },
+    {
+      q: "Saat berbicara dengan orang lain, saya sering...",
+      options: [
+        { text: "Memperhatikan ekspresi wajah dan bahasa tubuh mereka.", type: "visual" },
+        { text: "Mendengarkan nada suara dan intonasi mereka.", type: "auditori" },
+        { text: "Berdiri dekat dengan mereka atau menyentuh lengan mereka.", type: "kinestetik" }
+      ]
+    },
+    {
+      q: "Saat mengerjakan tugas kelompok, saya lebih suka...",
+      options: [
+        { text: "Membuat desain, presentasi, atau merapikan tulisan.", type: "visual" },
+        { text: "Menjadi pembicara atau memimpin diskusi.", type: "auditori" },
+        { text: "Mengumpulkan bahan, membuat properti, atau bagian praktik.", type: "kinestetik" }
+      ]
+    },
+    {
+      q: "Saat membaca buku cerita, saya biasanya...",
+      options: [
+        { text: "Membayangkan adegannya dengan jelas di kepala saya.", type: "visual" },
+        { text: "Membaca dengan suara pelan atau membayangkan suara karakternya.", type: "auditori" },
+        { text: "Merasakan emosi ceritanya atau tidak bisa duduk diam terlalu lama.", type: "kinestetik" }
+      ]
+    },
+    {
+      q: "Saat mencoba merakit sesuatu (seperti mainan atau perabot), saya akan...",
+      options: [
+        { text: "Melihat buku petunjuk gambar terlebih dahulu.", type: "visual" },
+        { text: "Meminta orang lain membacakan petunjuknya untuk saya.", type: "auditori" },
+        { text: "Langsung mencoba merakitnya tanpa melihat petunjuk.", type: "kinestetik" }
+      ]
+    },
+    {
+      q: "Saya paling mudah terganggu oleh...",
+      options: [
+        { text: "Ruangan yang berantakan atau cahaya yang terlalu terang.", type: "visual" },
+        { text: "Suara bising atau orang yang mengobrol di dekat saya.", type: "auditori" },
+        { text: "Kursi yang tidak nyaman atau suhu ruangan yang terlalu dingin/panas.", type: "kinestetik" }
+      ]
     }
   ];
 
-  const handleAnswer = (type: string) => {
-    setScores(prev => ({ ...prev, [type]: prev[type as keyof typeof prev] + 1 }));
+  const handleAnswer = async (type: string) => {
+    const newScores = { ...scores, [type]: scores[type as keyof typeof scores] + 1 };
+    setScores(newScores);
     
     if (step < questions.length - 1) {
       setStep(step + 1);
     } else {
       // Calculate result
-      const newScores = { ...scores, [type]: scores[type as keyof typeof scores] + 1 };
       let maxScore = 0;
       let maxType = '';
       
@@ -2631,6 +2721,23 @@ const LearningStyleTest = () => {
       });
       
       setResult(maxType);
+      
+      // Save to history
+      setIsSaving(true);
+      try {
+        await supabase.from('counseling_requests').insert({
+          student_id: user.id,
+          type: 'tes_gaya_belajar',
+          problem_type: maxType,
+          notes: `Hasil Tes Gaya Belajar: Visual (${newScores.visual}), Auditori (${newScores.auditori}), Kinestetik (${newScores.kinestetik})`,
+          status: 'completed',
+          preferred_time: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('Failed to save test result', err);
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -2640,19 +2747,19 @@ const LearningStyleTest = () => {
         return {
           title: "Visual (Melihat)",
           desc: "Kamu belajar paling baik dengan melihat. Gambar, diagram, warna, dan catatan yang rapi sangat membantumu memahami informasi.",
-          tips: ["Gunakan stabilo berwarna", "Buat mind map", "Tonton video pembelajaran", "Duduk di barisan depan"]
+          tips: ["Gunakan stabilo berwarna untuk menandai hal penting", "Buat mind map atau peta konsep", "Tonton video pembelajaran", "Duduk di barisan depan agar fokus melihat guru", "Gunakan flashcard bergambar"]
         };
       case 'auditori':
         return {
           title: "Auditori (Mendengar)",
           desc: "Kamu belajar paling baik dengan mendengarkan. Penjelasan lisan, diskusi, dan mendengarkan ulang rekaman sangat efektif untukmu.",
-          tips: ["Rekam penjelasan guru", "Belajar sambil berdiskusi", "Baca catatan dengan suara keras", "Gunakan jembatan keledai (lagu/nada)"]
+          tips: ["Rekam penjelasan guru dan dengarkan ulang", "Belajar sambil berdiskusi dengan teman", "Baca catatan dengan suara keras", "Gunakan jembatan keledai (lagu/nada) untuk menghafal", "Tutup mata saat mendengarkan agar lebih fokus"]
         };
       case 'kinestetik':
         return {
           title: "Kinestetik (Melakukan)",
           desc: "Kamu belajar paling baik dengan bergerak dan menyentuh. Praktik langsung dan aktivitas fisik membantumu mengingat lebih baik.",
-          tips: ["Belajar sambil berjalan-jalan kecil", "Gunakan alat peraga", "Sering istirahat sejenak saat belajar", "Lakukan eksperimen langsung"]
+          tips: ["Belajar sambil berjalan-jalan kecil atau menggerakkan tangan", "Gunakan alat peraga atau benda nyata", "Sering istirahat sejenak saat belajar (jangan duduk terlalu lama)", "Lakukan eksperimen langsung", "Tulis ulang materi dengan tanganmu sendiri"]
         };
       default:
         return { title: "", desc: "", tips: [] };
@@ -2721,6 +2828,8 @@ const LearningStyleTest = () => {
                 ))}
               </ul>
             </div>
+            
+            {isSaving && <p className="mt-4 text-sm text-slate-500">Menyimpan hasil ke riwayat...</p>}
             
             <button 
               onClick={() => {
@@ -2934,7 +3043,7 @@ export default function App() {
               <Route path="/admin" element={<CounselorDashboard user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} />} />
               <Route path="/healing" element={<SelfHealing />} />
               <Route path="/info" element={<ExternalFrame title="Info Sekolah Lanjutan" url="https://sekolah.data.kemendikdasmen.go.id/" />} />
-              <Route path="/test" element={<LearningStyleTest />} />
+              <Route path="/test" element={<LearningStyleTest user={user} />} />
             </Routes>
           </AnimatePresence>
           
