@@ -1734,9 +1734,12 @@ const ReportingForm = ({ user }: { user: User }) => {
   );
 };
 
-const ModuleList = () => {
+const ModuleList = ({ user }: { user: User }) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
+  const [isAddModuleModalOpen, setIsAddModuleModalOpen] = useState(false);
+  const [newModule, setNewModule] = useState({ title: '', content: '', category: 'Akademik' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultModules: Module[] = [
     {
@@ -1765,21 +1768,130 @@ const ModuleList = () => {
     }
   ];
 
+  const fetchModules = async () => {
+    const { data } = await supabase.from('modules').select('*').order('created_at', { ascending: false });
+    if (data) {
+      setModules([...data, ...defaultModules.map(m => ({ ...m, id: -m.id }))]);
+    } else {
+      setModules(defaultModules.map(m => ({ ...m, id: -m.id })));
+    }
+  };
+
   useEffect(() => {
-    supabase.from('modules').select('*').order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setModules(data);
-        } else {
-          setModules(defaultModules);
-        }
-      });
+    fetchModules();
   }, []);
+
+  const handleAddModule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const { error } = await supabase.from('modules').insert([newModule]);
+    setIsSubmitting(false);
+    if (!error) {
+      setIsAddModuleModalOpen(false);
+      setNewModule({ title: '', content: '', category: 'Akademik' });
+      fetchModules();
+      alert('Modul berhasil ditambahkan!');
+    } else {
+      alert('Gagal menambahkan modul.');
+    }
+  };
+
+  const handleDeleteModule = async (id: number) => {
+    if (id < 0) {
+      alert('Modul bawaan tidak dapat dihapus.');
+      return;
+    }
+    if (window.confirm('Apakah Anda yakin ingin menghapus modul ini?')) {
+      const { error } = await supabase.from('modules').delete().eq('id', id);
+      if (!error) {
+        fetchModules();
+      } else {
+        alert('Gagal menghapus modul.');
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-pink-50 to-purple-50 w-full pb-32">
       <Header title="Modul BK" />
       
+      {(user.role === 'counselor' || user.role === 'superadmin') && (
+        <div className="max-w-5xl mx-auto px-6 pt-6">
+          <button 
+            onClick={() => setIsAddModuleModalOpen(true)}
+            className="w-full bg-rose-600 text-white py-4 rounded-2xl font-bold text-display shadow-lg shadow-rose-200 flex items-center justify-center gap-2"
+          >
+            <Plus className="w-5 h-5" /> Tambah Modul Materi
+          </button>
+        </div>
+      )}
+
+      {/* Add Module Modal */}
+      <AnimatePresence>
+        {isAddModuleModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative max-h-[90vh] flex flex-col overflow-hidden"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-slate-800">Tambah Modul Baru</h2>
+                <button onClick={() => setIsAddModuleModalOpen(false)} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto">
+                <form onSubmit={handleAddModule} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Judul Materi</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newModule.title}
+                      onChange={e => setNewModule({...newModule, title: e.target.value})}
+                      className="w-full p-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none text-sm"
+                      placeholder="Contoh: Cara Mengatasi Stres"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Kategori</label>
+                    <select 
+                      value={newModule.category}
+                      onChange={e => setNewModule({...newModule, category: e.target.value})}
+                      className="w-full p-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none text-sm bg-white"
+                    >
+                      <option value="Akademik">Akademik</option>
+                      <option value="Pribadi">Pribadi</option>
+                      <option value="Sosial">Sosial</option>
+                      <option value="Karir">Karir</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Isi Materi</label>
+                    <textarea 
+                      required
+                      value={newModule.content}
+                      onChange={e => setNewModule({...newModule, content: e.target.value})}
+                      className="w-full p-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none text-sm min-h-[200px]"
+                      placeholder="Tuliskan isi materi di sini..."
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="w-full bg-rose-600 text-white py-4 rounded-2xl font-bold text-display mt-4 disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Menyimpan...' : 'Simpan Modul'}
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Module Detail Modal */}
       <AnimatePresence>
         {selectedModule && (
@@ -1821,7 +1933,16 @@ const ModuleList = () => {
 
       <div className="p-6 space-y-4 max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {modules.map(m => (
-          <div key={m.id} className="bg-white p-6 rounded-3xl border border-rose-100 shadow-sm shadow-rose-100/50 h-full flex flex-col">
+          <div key={m.id} className="bg-white p-6 rounded-3xl border border-rose-100 shadow-sm shadow-rose-100/50 h-full flex flex-col relative">
+            {(user.role === 'counselor' || user.role === 'superadmin') && m.id > 0 && (
+              <button 
+                onClick={() => handleDeleteModule(m.id)}
+                className="absolute top-6 right-6 p-2 bg-rose-50 text-rose-600 rounded-full hover:bg-rose-100 transition-colors"
+                title="Hapus Modul"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <div className="flex items-center gap-2 mb-3">
               <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-600 px-3 py-1 rounded-full">
                 {m.category.replace('_', ' ')}
@@ -2808,7 +2929,7 @@ export default function App() {
               <Route path="/" element={<Home user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} />} />
               <Route path="/counseling" element={<CounselingForm user={user} />} />
               <Route path="/report" element={<ReportingForm user={user} />} />
-              <Route path="/modules" element={<ModuleList />} />
+              <Route path="/modules" element={<ModuleList user={user} />} />
               <Route path="/history" element={<HistoryView user={user} />} />
               <Route path="/admin" element={<CounselorDashboard user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} />} />
               <Route path="/healing" element={<SelfHealing />} />
