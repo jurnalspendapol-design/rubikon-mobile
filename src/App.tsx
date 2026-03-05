@@ -2232,10 +2232,11 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
             {tab === 'requests' && (
               <button 
                 onClick={downloadCounselingRecap}
-                className="bg-emerald-600 text-white p-4 rounded-2xl shadow-lg shadow-emerald-100"
+                className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-lg shadow-emerald-200 font-bold text-sm hover:bg-emerald-700 transition-colors"
                 title="Download Rekap CSV"
               >
-                <Upload className="w-6 h-6 rotate-180" />
+                <Upload className="w-5 h-5 rotate-180" />
+                <span>Unduh CSV</span>
               </button>
             )}
           </div>
