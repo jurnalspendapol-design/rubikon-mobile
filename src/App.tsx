@@ -2082,6 +2082,29 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
     (filterStatus === 'all' || r.status === filterStatus)
   );
 
+  const downloadCounselingRecap = () => {
+    const headers = ["Nama Siswa", "Masalah", "Waktu", "Catatan", "Status"];
+    const csvContent = [
+      headers.join(','),
+      ...filteredRequests.map(r => [
+        `"${r.student_name}"`,
+        `"${r.problem_type}"`,
+        `"${new Date(r.preferred_time).toLocaleString()}"`,
+        `"${r.notes}"`,
+        `"${r.status}"`
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "rekap_konseling.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const filteredReports = reports.filter(r => 
     (r.student_name?.toLowerCase().includes(searchQuery.toLowerCase())) &&
     (filterStatus === 'all' || r.status === filterStatus)
@@ -2206,6 +2229,15 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
               <option value="accepted">Sudah Dikonfirmasi</option>
               <option value="read">Sudah Dibaca</option>
             </select>
+            {tab === 'requests' && (
+              <button 
+                onClick={downloadCounselingRecap}
+                className="bg-emerald-600 text-white p-4 rounded-2xl shadow-lg shadow-emerald-100"
+                title="Download Rekap CSV"
+              >
+                <Upload className="w-6 h-6 rotate-180" />
+              </button>
+            )}
           </div>
         )}
 
