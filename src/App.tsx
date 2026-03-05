@@ -2211,32 +2211,34 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
 
       <div className="px-6 space-y-5">
         {(tab === 'requests' || tab === 'reports') && (
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              placeholder="Cari siswa..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-white border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium outline-none focus:border-blue-500"
-            />
-            <select 
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-white border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium outline-none focus:border-blue-500"
-            >
-              <option value="all">Semua</option>
-              <option value="pending">Belum Dikonfirmasi</option>
-              <option value="accepted">Sudah Dikonfirmasi</option>
-              <option value="read">Sudah Dibaca</option>
-            </select>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="Cari siswa..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-white border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium outline-none focus:border-blue-500"
+              />
+              <select 
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="bg-white border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium outline-none focus:border-blue-500"
+              >
+                <option value="all">Semua</option>
+                <option value="pending">Belum Dikonfirmasi</option>
+                <option value="accepted">Sudah Dikonfirmasi</option>
+                <option value="read">Sudah Dibaca</option>
+              </select>
+            </div>
             {tab === 'requests' && (
               <button 
                 onClick={downloadCounselingRecap}
-                className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-lg shadow-emerald-200 font-bold text-sm hover:bg-emerald-700 transition-colors"
+                className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-lg shadow-emerald-200 font-bold text-xs hover:bg-emerald-700 transition-colors"
                 title="Download Rekap CSV"
               >
-                <Upload className="w-5 h-5 rotate-180" />
-                <span>Unduh CSV</span>
+                <Upload className="w-4 h-4 rotate-180" />
+                <span>Unduh Rekap CSV</span>
               </button>
             )}
           </div>
