@@ -1998,6 +1998,8 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
   const [editingUser, setEditingUser] = useState<any>(null);
   const [viewingHistory, setViewingHistory] = useState<any>(null);
   const [userHistory, setUserHistory] = useState<any[]>([]);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
 
   const updateRequestStatus = async (id: number, status: string) => {
     const { error } = await supabase.from('counseling_requests').update({ status }).eq('id', id);
@@ -2073,6 +2075,28 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
     const { data } = await supabase.from('counseling_requests').select('*').eq('student_id', user.id).order('created_at', { ascending: false });
     if (data) setUserHistory(data);
     setViewingHistory(user);
+  };
+
+  const filteredRequests = requests.filter(r => 
+    (r.student_name.toLowerCase().includes(searchQuery.toLowerCase())) &&
+    (filterStatus === 'all' || r.status === filterStatus)
+  );
+
+  const filteredReports = reports.filter(r => 
+    (r.student_name?.toLowerCase().includes(searchQuery.toLowerCase())) &&
+    (filterStatus === 'all' || r.status === filterStatus)
+  );
+
+  const handleDeleteSelectedUsers = async () => {
+    if (confirm(`Hapus ${selectedUsers.length} akun terpilih?`)) {
+      const { error } = await supabase.from('users').delete().in('id', selectedUsers);
+      if (!error) {
+        setSelectedUsers([]);
+        fetchUsers();
+      } else {
+        alert('Gagal menghapus pengguna.');
+      }
+    }
   };
 
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2163,8 +2187,30 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
       </div>
 
       <div className="px-6 space-y-5">
+        {(tab === 'requests' || tab === 'reports') && (
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              placeholder="Cari siswa..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-white border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium outline-none focus:border-blue-500"
+            />
+            <select 
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="bg-white border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium outline-none focus:border-blue-500"
+            >
+              <option value="all">Semua</option>
+              <option value="pending">Belum Dikonfirmasi</option>
+              <option value="accepted">Sudah Dikonfirmasi</option>
+              <option value="read">Sudah Dibaca</option>
+            </select>
+          </div>
+        )}
+
         {tab === 'requests' && (
-          requests.map(r => (
+          filteredRequests.map(r => (
             <div key={r.id} className="card-neo p-6">
               <div className="flex justify-between items-start mb-4">
                 <h4 className="text-display font-bold text-slate-800 text-lg">{r.student_name}</h4>
@@ -2196,7 +2242,7 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
         )}
 
         {tab === 'reports' && (
-          reports.map(r => (
+          filteredReports.map(r => (
             <div key={r.id} className="card-neo p-6">
               <div className="flex justify-between items-start mb-4">
                 <h4 className="text-display font-bold text-slate-800 text-lg">{r.is_anonymous ? 'Anonim' : r.student_name}</h4>
@@ -2263,45 +2309,56 @@ const CounselorDashboard = ({ user, onLogout, onProfileClick }: { user: User, on
 
             <div className="space-y-4">
               {users.map(u => (
-                <div key={u.id} className="card-neo p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h4 className="text-display font-bold text-slate-800 text-lg">{u.name}</h4>
-                      <p className="text-xs text-slate-400 font-medium">{u.email}</p>
+                <div key={u.id} className="card-neo p-6 flex items-center gap-4">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedUsers.includes(u.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedUsers([...selectedUsers, u.id]);
+                      else setSelectedUsers(selectedUsers.filter(id => id !== u.id));
+                    }}
+                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="text-display font-bold text-slate-800 text-lg">{u.name}</h4>
+                        <p className="text-xs text-slate-400 font-medium">{u.email}</p>
+                      </div>
+                      <span className={cn(
+                        "text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider",
+                        u.role === 'counselor' ? "bg-indigo-100 text-indigo-600" : "bg-emerald-100 text-emerald-600"
+                      )}>
+                        {u.role}
+                      </span>
                     </div>
-                    <span className={cn(
-                      "text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider",
-                      u.role === 'counselor' ? "bg-indigo-100 text-indigo-600" : "bg-emerald-100 text-emerald-600"
-                    )}>
-                      {u.role}
-                    </span>
-                  </div>
-                  
-                  {u.role === 'student' && (
-                    <div className="mb-4">
-                      <p className="text-sm text-slate-500 font-medium"><strong>Kelas:</strong> {u.class || '-'}</p>
-                    </div>
-                  )}
+                    
+                    {u.role === 'student' && (
+                      <div className="mb-4">
+                        <p className="text-sm text-slate-500 font-medium"><strong>Kelas:</strong> {u.class || '-'}</p>
+                      </div>
+                    )}
 
-                  <div className="flex gap-2 pt-4 border-t border-slate-50">
-                    <button 
-                      onClick={() => fetchUserHistory(u)}
-                      className="flex-1 bg-slate-50 text-slate-600 py-3 rounded-xl text-xs font-bold text-display"
-                    >
-                      Riwayat
-                    </button>
-                    <button 
-                      onClick={() => { setEditingUser(u); setIsUserModalOpen(true); }}
-                      className="p-3 bg-blue-50 text-blue-600 rounded-xl"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteUser(u.id)}
-                      className="p-3 bg-rose-50 text-rose-600 rounded-xl"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2 pt-4 border-t border-slate-50">
+                      <button 
+                        onClick={() => fetchUserHistory(u)}
+                        className="flex-1 bg-slate-50 text-slate-600 py-3 rounded-xl text-xs font-bold text-display"
+                      >
+                        Riwayat
+                      </button>
+                      <button 
+                        onClick={() => { setEditingUser(u); setIsUserModalOpen(true); }}
+                        className="p-3 bg-blue-50 text-blue-600 rounded-xl"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteUser(u.id)}
+                        className="p-3 bg-rose-50 text-rose-600 rounded-xl"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
