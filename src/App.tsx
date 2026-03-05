@@ -21,7 +21,9 @@ import {
   Trash2,
   Upload,
   LogOut,
-  X
+  X,
+  Lock,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -2980,6 +2982,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('rubikon_user');
@@ -2987,27 +2991,48 @@ export default function App() {
       setUser(JSON.parse(savedUser));
     }
     setLoading(false);
+
+    // PWA Install Prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
   }, []);
 
   const handleLogin = (userData: User) => {
     setUser(userData);
     localStorage.setItem('rubikon_user', JSON.stringify(userData));
     
+    // Check if password prompt should be shown
+    if (!localStorage.getItem('password_prompt_seen')) {
+      setShowPasswordPrompt(true);
+    }
+    
     // Attempt to go fullscreen for immersive mobile experience
     try {
       if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {
-          // Ignore errors if fullscreen is blocked by browser
-        });
+        document.documentElement.requestFullscreen().catch(() => {});
       }
     } catch (e) {
       console.log('Fullscreen request failed');
     }
   };
 
+  const handleInstallApp = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult: any) => {
+        if (choiceResult.outcome === 'accepted') {
+          setDeferredPrompt(null);
+        }
+      });
+    }
+  };
+
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('rubikon_user');
+    localStorage.removeItem('password_prompt_seen');
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-slate-400">Loading...</div>;
@@ -3020,6 +3045,54 @@ export default function App() {
 
   return (
     <MobileWrapper>
+      {/* Password Change Prompt Modal */}
+      <AnimatePresence>
+        {showPasswordPrompt && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Lock className="w-8 h-8 text-blue-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 mb-4">Keamanan Akun</h2>
+              <p className="text-slate-600 text-sm mb-8">Demi keamanan, kami sarankan Anda untuk segera mengubah password default Anda agar tidak disalahgunakan orang lain.</p>
+              <button 
+                onClick={() => {
+                  localStorage.setItem('password_prompt_seen', 'true');
+                  setShowPasswordPrompt(false);
+                  setIsProfileOpen(true);
+                }}
+                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-sm"
+              >
+                Ubah Password Sekarang
+              </button>
+              <button 
+                onClick={() => {
+                  localStorage.setItem('password_prompt_seen', 'true');
+                  setShowPasswordPrompt(false);
+                }}
+                className="w-full mt-3 text-slate-400 font-bold text-sm py-4"
+              >
+                Nanti Saja
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* PWA Install Button */}
+      {deferredPrompt && (
+        <button 
+          onClick={handleInstallApp}
+          className="fixed top-4 right-4 z-[100] bg-white p-3 rounded-full shadow-lg border border-slate-100 text-blue-600 animate-bounce"
+        >
+          <Download className="w-6 h-6" />
+        </button>
+      )}
+
       <Router>
         <div className="w-full bg-slate-50 min-h-screen relative overflow-x-hidden pb-24">
           <ChatModal isOpen={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} />
