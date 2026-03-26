@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, Link, Navigate } from 'react-router-dom';
 import { 
   MessageCircle, 
   AlertCircle, 
@@ -33,7 +33,7 @@ import { supabase } from './lib/supabase';
 interface User {
   id: number;
   name: string;
-  role: 'student' | 'counselor' | 'superadmin';
+  role: 'student' | 'counselor' | 'superadmin' | 'guest';
   email: string;
   class?: string;
   avatar_url?: string;
@@ -352,7 +352,49 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, onUpdateUser }: { user:
   );
 };
 
-const ChatModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+const AboutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl relative max-h-[80vh] overflow-y-auto"
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 bg-slate-50 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <X className="w-6 h-6" />
+        </button>
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Info className="w-8 h-8 text-blue-600" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-800 mb-4">Tentang Rubikon Mobile</h2>
+        <div className="text-slate-600 text-sm mb-8 text-left space-y-4">
+          <p><strong>Rubikon Mobile</strong> adalah platform bimbingan konseling digital yang dirancang khusus untuk mendukung kesehatan mental dan pengembangan diri siswa di lingkungan sekolah.</p>
+          <p><strong>Cara Menggunakan:</strong></p>
+          <ul className="list-decimal pl-4 space-y-2">
+            <li><strong>Login:</strong> Masuk dengan akun yang diberikan oleh pihak sekolah.</li>
+            <li><strong>Konseling:</strong> Gunakan fitur Konseling untuk menjadwalkan sesi bimbingan dengan guru BK.</li>
+            <li><strong>Pengaduan:</strong> Laporkan masalah atau kendala yang kamu hadapi secara aman dan rahasia.</li>
+            <li><strong>Edukasi:</strong> Pelajari modul BK dan tips kesehatan mental untuk pengembangan diri.</li>
+            <li><strong>Chat Guru:</strong> Hubungi guru BK secara langsung melalui WhatsApp untuk konsultasi cepat.</li>
+          </ul>
+        </div>
+        <button 
+          onClick={onClose}
+          className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-sm"
+        >
+          Mengerti
+        </button>
+      </motion.div>
+    </div>
+  );
+};
+
+const ChatModal = ({ isOpen, onClose, user, onOpenGuestModal }: { isOpen: boolean, onClose: () => void, user: User, onOpenGuestModal: () => void }) => {
   if (!isOpen) return null;
 
   const counselors = [
@@ -386,6 +428,11 @@ const ChatModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
             <button
               key={c.name}
               onClick={() => {
+                if (user.role === 'guest') {
+                  onOpenGuestModal();
+                  onClose();
+                  return;
+                }
                 window.open(`https://wa.me/${c.phone}`, '_blank');
                 onClose();
               }}
@@ -462,7 +509,7 @@ const Banner = ({ image, title, category, onClick }: { image: string, title: str
 
 // --- Pages ---
 
-const Home = ({ user, onLogout, onProfileClick }: { user: User, onLogout: () => void, onProfileClick: () => void }) => {
+const Home = ({ user, onLogout, onProfileClick, onOpenAboutModal }: { user: User, onLogout: () => void, onProfileClick: () => void, onOpenAboutModal: () => void }) => {
   const navigate = useNavigate();
   const [selectedBanner, setSelectedBanner] = useState<{title: string, category: string, content: string, image: string} | null>(null);
 
@@ -548,8 +595,11 @@ const Home = ({ user, onLogout, onProfileClick }: { user: User, onLogout: () => 
             <h2 className="text-display text-xl font-bold text-slate-800">{user.name} 👋</h2>
           </div>
         </div>
-        <button className="w-10 h-10 rounded-full glass flex items-center justify-center text-slate-600">
-          <AlertCircle className="w-5 h-5" />
+        <button 
+          onClick={onOpenAboutModal}
+          className="w-10 h-10 rounded-full glass flex items-center justify-center text-slate-600"
+        >
+          <Info className="w-5 h-5" />
         </button>
       </div>
 
@@ -583,7 +633,7 @@ const Home = ({ user, onLogout, onProfileClick }: { user: User, onLogout: () => 
           icon={MessageCircle} 
           label="Konseling" 
           subtitle="Bimbingan pribadi & kelompok"
-          onClick={() => navigate('/counseling')}
+          onClick={() => user.role === 'guest' ? onOpenAboutModal() : navigate('/counseling')}
           iconBg="bg-orange-100"
           iconColor="text-orange-600"
           className="col-span-1"
@@ -592,7 +642,7 @@ const Home = ({ user, onLogout, onProfileClick }: { user: User, onLogout: () => 
           icon={AlertCircle} 
           label="Pengaduan" 
           subtitle="Lapor masalah secara aman"
-          onClick={() => navigate('/report')}
+          onClick={() => user.role === 'guest' ? onOpenAboutModal() : navigate('/report')}
           iconBg="bg-purple-100"
           iconColor="text-purple-600"
           className="col-span-1"
@@ -3046,6 +3096,13 @@ const LoginPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
             >
               {loading ? 'Masuk...' : 'Masuk Sekarang'}
             </button>
+            <button 
+              type="button"
+              onClick={() => onLogin({ id: 0, name: 'Tamu', role: 'guest', email: 'tamu@rubikon.id' })}
+              className="w-full bg-slate-100 text-slate-600 py-5 rounded-2xl font-bold text-display transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              Masuk sebagai Tamu
+            </button>
           </form>
 
           <div className="mt-8 pt-8 border-t border-slate-100 text-center">
@@ -3073,6 +3130,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -3187,7 +3245,8 @@ export default function App() {
 
       <Router>
         <div className="w-full bg-slate-50 min-h-screen relative overflow-x-hidden pb-24">
-          <ChatModal isOpen={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} />
+          <ChatModal isOpen={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} user={user} onOpenGuestModal={() => setIsAboutModalOpen(true)} />
+          <AboutModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
           <ProfileModal 
             user={user} 
             isOpen={isProfileOpen} 
@@ -3200,9 +3259,9 @@ export default function App() {
           />
           <AnimatePresence mode="wait">
             <Routes>
-              <Route path="/" element={<Home user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} />} />
-              <Route path="/counseling" element={<CounselingForm user={user} />} />
-              <Route path="/report" element={<ReportingForm user={user} />} />
+              <Route path="/" element={<Home user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} onOpenAboutModal={() => setIsAboutModalOpen(true)} />} />
+              <Route path="/counseling" element={user.role === 'guest' ? <Navigate to="/" /> : <CounselingForm user={user} />} />
+              <Route path="/report" element={user.role === 'guest' ? <Navigate to="/" /> : <ReportingForm user={user} />} />
               <Route path="/modules" element={<ModuleList user={user} />} />
               <Route path="/history" element={<HistoryView user={user} />} />
               <Route path="/admin" element={<CounselorDashboard user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} />} />
@@ -3232,7 +3291,7 @@ export default function App() {
                 <motion.button 
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsChatModalOpen(true)}
+                  onClick={() => user.role === 'guest' ? alert('Fitur ini hanya untuk pengguna terdaftar. Silakan login untuk mengakses fitur ini.') : setIsChatModalOpen(true)}
                   className="bg-gradient-to-tr from-blue-600 to-teal-400 p-5 rounded-[1.5rem] shadow-2xl shadow-blue-200 text-white border-4 border-white"
                 >
                   <MessageSquare className="w-6 h-6" />
