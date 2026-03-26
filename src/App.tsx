@@ -352,6 +352,32 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, onUpdateUser }: { user:
   );
 };
 
+const GuestAccessModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl text-center"
+      >
+        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <AlertCircle className="w-8 h-8 text-amber-600" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-800 mb-4">Akses Terbatas</h2>
+        <p className="text-slate-600 text-sm mb-8">Anda masuk sebagai tamu. Fitur ini hanya untuk pengguna terdaftar. Silakan hubungi guru BK atau pihak sekolah untuk mendapatkan akun agar dapat menikmati semua fitur.</p>
+        <button 
+          onClick={onClose}
+          className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-sm"
+        >
+          Mengerti
+        </button>
+      </motion.div>
+    </div>
+  );
+};
+
 const AboutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   if (!isOpen) return null;
 
@@ -509,7 +535,7 @@ const Banner = ({ image, title, category, onClick }: { image: string, title: str
 
 // --- Pages ---
 
-const Home = ({ user, onLogout, onProfileClick, onOpenAboutModal }: { user: User, onLogout: () => void, onProfileClick: () => void, onOpenAboutModal: () => void }) => {
+const Home = ({ user, onLogout, onProfileClick, onOpenGuestModal, onOpenAboutModal }: { user: User, onLogout: () => void, onProfileClick: () => void, onOpenGuestModal: () => void, onOpenAboutModal: () => void }) => {
   const navigate = useNavigate();
   const [selectedBanner, setSelectedBanner] = useState<{title: string, category: string, content: string, image: string} | null>(null);
 
@@ -633,7 +659,7 @@ const Home = ({ user, onLogout, onProfileClick, onOpenAboutModal }: { user: User
           icon={MessageCircle} 
           label="Konseling" 
           subtitle="Bimbingan pribadi & kelompok"
-          onClick={() => user.role === 'guest' ? onOpenAboutModal() : navigate('/counseling')}
+          onClick={() => user.role === 'guest' ? onOpenGuestModal() : navigate('/counseling')}
           iconBg="bg-orange-100"
           iconColor="text-orange-600"
           className="col-span-1"
@@ -642,7 +668,7 @@ const Home = ({ user, onLogout, onProfileClick, onOpenAboutModal }: { user: User
           icon={AlertCircle} 
           label="Pengaduan" 
           subtitle="Lapor masalah secara aman"
-          onClick={() => user.role === 'guest' ? onOpenAboutModal() : navigate('/report')}
+          onClick={() => user.role === 'guest' ? onOpenGuestModal() : navigate('/report')}
           iconBg="bg-purple-100"
           iconColor="text-purple-600"
           className="col-span-1"
@@ -3130,6 +3156,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
@@ -3245,7 +3272,8 @@ export default function App() {
 
       <Router>
         <div className="w-full bg-slate-50 min-h-screen relative overflow-x-hidden pb-24">
-          <ChatModal isOpen={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} user={user} onOpenGuestModal={() => setIsAboutModalOpen(true)} />
+          <ChatModal isOpen={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} user={user} onOpenGuestModal={() => setIsGuestModalOpen(true)} />
+          <GuestAccessModal isOpen={isGuestModalOpen} onClose={() => setIsGuestModalOpen(false)} />
           <AboutModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
           <ProfileModal 
             user={user} 
@@ -3259,7 +3287,7 @@ export default function App() {
           />
           <AnimatePresence mode="wait">
             <Routes>
-              <Route path="/" element={<Home user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} onOpenAboutModal={() => setIsAboutModalOpen(true)} />} />
+              <Route path="/" element={<Home user={user} onLogout={handleLogout} onProfileClick={() => setIsProfileOpen(true)} onOpenGuestModal={() => setIsGuestModalOpen(true)} onOpenAboutModal={() => setIsAboutModalOpen(true)} />} />
               <Route path="/counseling" element={user.role === 'guest' ? <Navigate to="/" /> : <CounselingForm user={user} />} />
               <Route path="/report" element={user.role === 'guest' ? <Navigate to="/" /> : <ReportingForm user={user} />} />
               <Route path="/modules" element={<ModuleList user={user} />} />
